@@ -1,0 +1,2380 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuadTone DSP — Multi-Effects Guitar Pedal & Amp Modeler</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #121417;
+      --bg-card: #1a1d22;
+      --bg-card-hover: #21252c;
+      --bg-pill: #181a1f;
+      --border-subtle: #2b303a;
+      --amber-primary: #f59e0b;
+      --amber-bright: #fbbf24;
+      --led-green: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: #f1f5f9;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom sleek scrollbar for signal chain */
+    .chain-scroll::-webkit-scrollbar {
+      height: 8px;
+    }
+    .chain-scroll::-webkit-scrollbar-track {
+      background: #14161a;
+      border-radius: 999px;
+    }
+    .chain-scroll::-webkit-scrollbar-thumb {
+      background: #2b303b;
+      border-radius: 999px;
+      border: 2px solid #14161a;
+    }
+    .chain-scroll::-webkit-scrollbar-thumb:hover {
+      background: #3f4656;
+    }
+
+    /* LED Glows */
+    .led-on {
+      background: radial-gradient(circle at 35% 35%, #bbf7d0 0%, #4ade80 55%, #16a34a 100%);
+      box-shadow: 0 0 8px rgba(74, 222, 128, 0.85), 0 0 16px rgba(74, 222, 128, 0.45);
+    }
+    .led-off {
+      background: #2c313a;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Pedal Card Styling */
+    .pedal-card {
+      background: linear-gradient(180deg, #1d2026 0%, #17191e 100%);
+      transition: transform 0.14s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+    .pedal-card:hover {
+      background: linear-gradient(180deg, #22262e 0%, #1b1e24 100%);
+    }
+    .pedal-card.bypassed {
+      background: #16181c;
+      border-color: #262a33 !important;
+    }
+    .pedal-card.bypassed .pedal-icon {
+      opacity: 0.35;
+      filter: grayscale(40%);
+    }
+    .pedal-card.bypassed .pedal-title {
+      color: #6b7280;
+    }
+    .pedal-card.bypassed .pedal-sub {
+      color: #4b5563;
+    }
+    .pedal-card.selected {
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.65), 0 10px 25px -5px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Rotary Knob styling */
+    .rotary-knob {
+      background: conic-gradient(from 220deg, #262b34 0deg, #171a20 360deg);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.12);
+    }
+
+    /* Range slider styling */
+    input[type="range"].dsp-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #262b35;
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"].dsp-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 2px solid #fef3c7;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    }
+
+    /* Subtle pulse for active audio riff */
+    @keyframes audioPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+    }
+    .audio-active-pulse {
+      animation: audioPulse 1.8s infinite;
+    }
+
+    /* ==================== HARDWARE STOMPBOX PEDALBOARD STYLES ==================== */
+    .stomp-chassis {
+      box-shadow:
+        0 14px 28px rgba(0, 0, 0, 0.65),
+        inset 0 1px 1px rgba(255, 255, 255, 0.35),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.45);
+      transition: transform 0.12s ease, box-shadow 0.2s ease;
+    }
+    .stomp-knob-cap {
+      background: radial-gradient(circle at 35% 30%, #3a3f47 0%, #181a1f 70%, #0d0e11 100%);
+      box-shadow:
+        0 5px 10px rgba(0, 0, 0, 0.7),
+        inset 0 1px 1px rgba(255, 255, 255, 0.25);
+      cursor: ns-resize;
+      touch-action: none;
+    }
+    .stomp-led-on {
+      background: radial-gradient(circle at 35% 35%, #fecaca 0%, #ef4444 50%, #991b1b 100%);
+      box-shadow: 0 0 10px #ef4444, 0 0 20px rgba(239, 68, 68, 0.85), inset 0 0 2px #fff;
+    }
+    .stomp-led-off {
+      background: radial-gradient(circle at 35% 35%, #4b5563 0%, #1f2937 80%);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+    }
+    .stomp-footswitch {
+      background: radial-gradient(circle at 35% 35%, #f8fafc 0%, #cbd5e1 55%, #64748b 100%);
+      box-shadow:
+        0 4px 8px rgba(0, 0, 0, 0.7),
+        0 0 0 3px #94a3b8,
+        0 0 0 5px #334155,
+        inset 0 2px 3px rgba(255, 255, 255, 0.9);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .stomp-footswitch:active {
+      transform: scale(0.92);
+      box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.8),
+        0 0 0 3px #94a3b8,
+        0 0 0 5px #334155;
+    }
+    .stomp-jack {
+      background: linear-gradient(180deg, #94a3b8 0%, #e2e8f0 45%, #475569 100%);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#121417] text-slate-100">
+
+  <!-- ==================== TOP HEADER BAR ==================== -->
+  <header class="w-full px-3 sm:px-5 pt-3 pb-2 flex flex-wrap items-center justify-between gap-2 border-b border-[#1e222a]/70 bg-[#121417]/95 backdrop-blur-md sticky top-0 z-30">
+    
+    <!-- Left Utility Cluster: Sine Wave Logo, Tuner, Metronome, Audio Engine Play Toggle -->
+    <div class="flex items-center gap-2 sm:gap-2.5">
+      <!-- Circular Sine Wave Logo Button -->
+      <button id="btn-logo" title="QuadTone DSP Engine Info"
+        class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#17191e] border-2 border-slate-100 flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-md">
+        <svg class="w-6 h-6 text-white" viewBox="0 0 28 28" fill="none">
+          <path d="M3 14C5.5 7 8.5 7 11 14C13.5 21 16.5 21 19 14C21.5 7 23.5 9 25 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="14" y1="3" x2="14" y2="25" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45"/>
+        </svg>
+      </button>
+
+      <!-- Tuner Button -->
+      <button id="btn-tuner" title="Chromatic Guitar Tuner (T)"
+        class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1a1d23] hover:bg-[#232730] border border-[#2b303b] flex items-center justify-center transition active:scale-95">
+        <svg class="w-5 h-5 text-[#38bdf8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 16.5a9 9 0 1 1 15 0" />
+          <path d="M12 14l3.5-5.5" />
+          <circle cx="12" cy="14" r="1.5" fill="currentColor"/>
+          <path d="M7.5 11.5l1 .5M16.5 11.5l-1 .5M12 7v1.2" />
+        </svg>
+      </button>
+
+      <!-- Metronome Button -->
+      <button id="btn-metronome" title="Metronome & Tap Tempo (M)"
+        class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1a1d23] hover:bg-[#232730] border border-[#2b303b] flex items-center justify-center transition active:scale-95 relative">
+        <svg class="w-5 h-5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 20h12L15 4H9L6 20z" />
+          <path d="M12 17l5-9" />
+          <line x1="7.5" y1="15" x2="16.5" y2="15" />
+        </svg>
+        <span id="metro-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400"></span>
+      </button>
+
+      <!-- Built-in Guitar Riff Synth / Live Audio Trigger -->
+      <button id="btn-audio-play" title="Play/Stop Built-in Guitar Riff through DSP Chain (Space)"
+        class="h-10 sm:h-11 px-3 rounded-xl bg-[#1a1d23] hover:bg-[#232730] border border-[#2b303b] flex items-center gap-2 text-xs font-semibold text-slate-200 transition active:scale-95">
+        <span id="audio-play-icon" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+        <span id="audio-play-label" class="hidden md:inline">PLAY RIFF</span>
+      </button>
+    </div>
+
+    <!-- Center I/O Level Meter Pill -->
+    <div id="io-meter-pill" title="Click to adjust Input Gain & Master Output Level"
+      class="order-3 lg:order-2 w-full lg:w-auto flex-1 max-w-xl mx-auto px-3.5 py-2 rounded-xl bg-[#181b20] border border-[#262b35] flex items-center justify-between gap-3 sm:gap-5 cursor-pointer hover:border-[#363d4b] transition">
+      
+      <!-- IN Meter -->
+      <div class="flex items-center gap-2.5 flex-1">
+        <span class="text-[11px] font-semibold tracking-wider text-slate-400">IN</span>
+        <div class="w-full h-2 bg-[#252932] rounded-full overflow-hidden p-[1px]">
+          <div id="meter-in" class="h-full bg-gradient-to-r from-[#4ade80] to-[#86efac] rounded-full transition-all duration-75" style="width: 48%;"></div>
+        </div>
+      </div>
+
+      <!-- OUT L/R Meters -->
+      <div class="flex items-center gap-2.5 flex-1">
+        <span class="text-[11px] font-semibold tracking-wider text-slate-400">OUT</span>
+        <div class="flex flex-col justify-center gap-1 text-[9px] font-bold text-slate-400 leading-none">
+          <span>L</span>
+          <span>R</span>
+        </div>
+        <div class="flex flex-col gap-1.5 w-full">
+          <div class="w-full h-1.5 bg-[#252932] rounded-full overflow-hidden">
+            <div id="meter-out-l" class="h-full bg-gradient-to-r from-[#4ade80] to-[#86efac] rounded-full transition-all duration-75" style="width: 72%;"></div>
+          </div>
+          <div class="w-full h-1.5 bg-[#252932] rounded-full overflow-hidden">
+            <div id="meter-out-r" class="h-full bg-gradient-to-r from-[#4ade80] to-[#86efac] rounded-full transition-all duration-75" style="width: 74%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Mode & Settings Cluster: LIVE, STOMPBOXES, SCENES, Settings Gear -->
+    <div class="order-2 lg:order-3 flex items-center gap-1.5 sm:gap-2.5">
+      <button id="btn-live-mode"
+        class="h-10 sm:h-11 px-3 sm:px-4 rounded-xl bg-[#f59e0b] hover:bg-[#fbbf24] text-[#121417] font-bold text-xs sm:text-sm tracking-wide transition shadow-md active:scale-95">
+        LIVE
+      </button>
+
+      <button id="btn-stompbox-view"
+        class="h-10 sm:h-11 px-3 sm:px-4 rounded-xl bg-[#1c2026] hover:bg-[#252a33] border border-[#2c313c] text-slate-200 font-bold text-xs sm:text-sm tracking-wide transition active:scale-95 flex items-center gap-1.5">
+        <span>STOMPBOXES</span>
+        <span id="stomp-active-badge" class="px-1.5 py-0.5 text-[10px] rounded-md bg-emerald-500/20 text-emerald-300 font-mono-tech">3</span>
+      </button>
+
+      <button id="btn-scenes-toggle"
+        class="h-10 sm:h-11 px-3 sm:px-4 rounded-xl bg-[#1c2026] hover:bg-[#252a33] border border-[#2c313c] text-slate-200 font-semibold text-xs sm:text-sm tracking-wide transition active:scale-95">
+        SCENES
+      </button>
+
+      <button id="btn-settings" title="Audio & MIDI Settings"
+        class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1a1d23] hover:bg-[#232730] border border-[#2b303b] flex items-center justify-center text-slate-200 transition active:scale-95">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN SIGNAL CHAIN & STOMPBOX WORKSPACE ==================== -->
+  <main class="flex-1 flex flex-col justify-center relative overflow-hidden py-2 sm:py-3">
+    
+    <!-- VIEW 1: MULTI-EFFECTS SIGNAL CHAIN -->
+    <div id="view-signal-chain" class="w-full flex flex-col justify-center">
+      <!-- Quick View Jump Controls (Left / Full / Right) for fast switching between Pre/Amps & Cabs/Post -->
+      <div class="px-4 sm:px-6 mb-1.5 flex items-center justify-between text-[11px] text-slate-400">
+        <div class="flex items-center gap-2">
+          <span class="uppercase tracking-wider font-semibold text-slate-500">Signal Chain</span>
+          <span class="hidden sm:inline text-slate-600">•</span>
+          <span class="hidden sm:inline text-slate-400">Click pedal body to edit knobs • Click LED to bypass • Click + to insert Stompboxes</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="scrollChain('left')" class="px-2.5 py-1 rounded-md bg-[#1a1d23] hover:bg-[#252a33] border border-[#2b303b] text-slate-300 font-medium transition">
+            ◄ Pre / Amps
+          </button>
+          <button onclick="scrollChain('right')" class="px-2.5 py-1 rounded-md bg-[#1a1d23] hover:bg-[#252a33] border border-[#2b303b] text-slate-300 font-medium transition">
+            Cabs / Post ►
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Signal Chain Canvas -->
+      <div id="signal-chain-viewport" class="chain-scroll w-full overflow-x-auto px-4 sm:px-6 py-2 flex items-center">
+        <div id="signal-chain-container" class="relative flex items-center min-w-max mx-auto py-2">
+          <!-- Rendered dynamically by JS to keep signal lines, parallel Split/Mix paths, and pedals crisp -->
+        </div>
+      </div>
+
+      <!-- Collapsible / Docked Pedal Parameter Editor Drawer (opens when any block is clicked) -->
+      <div id="inspector-drawer" class="hidden mx-3 sm:mx-6 mt-1 mb-1 rounded-2xl bg-[#181b20]/95 border border-[#2d333f] shadow-2xl px-4 py-3 backdrop-blur-md transition-all">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-3 border-b border-[#262b35]">
+          <div class="flex items-center gap-3">
+            <button id="inspector-led-btn" class="w-4 h-4 rounded-full led-on cursor-pointer" title="Toggle Bypass"></button>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 id="inspector-title" class="text-sm sm:text-base font-bold tracking-wide text-white">T-OD</h3>
+                <span id="inspector-model" class="text-xs px-2 py-0.5 rounded bg-[#232832] text-amber-400 font-medium">Tube Screamer Overdrive</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="inspector-remove-btn" class="hidden px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-300 text-xs font-semibold transition">
+              Remove Block
+            </button>
+            <button id="inspector-close-btn" onclick="closeInspector()" class="px-3 py-1 rounded-lg bg-[#232832] hover:bg-[#2e3440] text-slate-300 text-xs font-semibold transition">
+              Done ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Sliders / Knobs Container -->
+        <div id="inspector-controls" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: 10-PEDAL BOUTIQUE STOMPBOX RACK / PEDALBOARD -->
+    <div id="view-stompbox-rack" class="hidden w-full px-3 sm:px-6 py-1 flex flex-col">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5 px-1">
+        <div class="flex items-center gap-2">
+          <span class="uppercase tracking-wider text-xs font-bold text-amber-400">Boutique Stompbox Pedalboard (10 Analog & DSP Units)</span>
+          <span class="hidden md:inline text-xs text-slate-400">• Drag or scroll knobs to rotate • Click metallic TRUE BYPASS footswitches</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="bypassAllStompboxes()" class="px-2.5 py-1 rounded-lg bg-[#1d2129] hover:bg-[#272c37] border border-[#2f3543] text-[11px] font-semibold text-slate-300 transition">
+            Bypass All
+          </button>
+          <button onclick="switchMainView('chain')" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-[#121417] text-[11px] font-bold transition">
+            ← Back to Signal Chain
+          </button>
+        </div>
+      </div>
+
+      <!-- 2x5 Responsive Grid of All 10 Stompboxes -->
+      <div id="stompbox-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 max-w-6xl mx-auto w-full pb-2">
+        <!-- Rendered dynamically by JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==================== BOTTOM HARDWARE CONTROLLER SECTION ==================== -->
+  <footer class="w-full px-3 sm:px-5 pb-3 pt-1.5 flex flex-col gap-2.5 bg-[#121417] border-t border-[#1c2028]">
+    
+    <!-- Row 1: Bank & Preset Selector Bar -->
+    <div class="w-full grid grid-cols-12 gap-2 items-stretch">
+      
+      <!-- Bank Prev Arrow -->
+      <button id="btn-bank-prev" title="Previous Bank"
+        class="col-span-1 min-h-[48px] sm:min-h-[54px] rounded-xl bg-[#1a1d23] hover:bg-[#242830] border border-[#2b303a] flex items-center justify-center text-slate-200 transition active:scale-95">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+      </button>
+
+      <!-- Active Bank Badge -->
+      <div id="bank-badge"
+        class="col-span-3 sm:col-span-2 min-h-[48px] sm:min-h-[54px] rounded-xl bg-[#f59e0b] text-[#121417] font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center shadow-md">
+        BANK 1
+      </div>
+
+      <!-- 4 Preset Slots (A, B, C, D) -->
+      <div id="preset-slots-container" class="col-span-7 sm:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-2">
+        <!-- Rendered dynamically by JS -->
+      </div>
+
+      <!-- Bank Next Arrow -->
+      <button id="btn-bank-next" title="Next Bank"
+        class="col-span-1 min-h-[48px] sm:min-h-[54px] rounded-xl bg-[#1a1d23] hover:bg-[#242830] border border-[#2b303a] flex items-center justify-center text-slate-200 transition active:scale-95">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </button>
+    </div>
+
+    <!-- Row 2: 8-Scene Footswitch Row (A - H) -->
+    <div id="scenes-row" class="w-full grid grid-cols-4 sm:grid-cols-8 gap-2 transition-all duration-200">
+      <!-- Rendered dynamically by JS -->
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS (TUNER, METRONOME, EFFECT PICKER, SETTINGS) ==================== -->
+  <div id="modal-backdrop" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    
+    <!-- Modal Container -->
+    <div id="modal-box" class="w-full max-w-md rounded-2xl bg-[#181b21] border border-[#2e3442] shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 bg-[#1d2128] border-b border-[#2a2f3c] flex items-center justify-between">
+        <h2 id="modal-title" class="text-sm sm:text-base font-bold tracking-wide text-white uppercase">Tuner</h2>
+        <button id="modal-close" class="w-7 h-7 rounded-lg bg-[#262b35] hover:bg-[#323846] text-slate-300 flex items-center justify-center text-sm">✕</button>
+      </div>
+      <div id="modal-content" class="p-5">
+        <!-- Dynamic Modal Content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Pill -->
+  <div id="toast-msg" class="pointer-events-none fixed bottom-28 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-[#1f242d] border border-amber-500/50 text-amber-300 text-xs font-semibold shadow-xl opacity-0 transition-opacity duration-200 z-50">
+    Scene D: LEAD Loaded
+  </div>
+
+  <!-- ==================== JAVASCRIPT: DSP ENGINE, STATE & UI ==================== -->
+  <script>
+    /**
+     * 10 Classic Boutique Stompboxes modeled from reference image
+     */
+    const STOMPBOX_PEDALS = [
+      {
+        id: 'stomp_vintage_od',
+        name: 'Vintage Overdrive',
+        shortName: 'VINTAGE OD',
+        enabled: true,
+        bgGradient: 'linear-gradient(180deg, #a3be78 0%, #8aa660 55%, #77924f 100%)',
+        borderColor: '#698243',
+        textColor: '#18200f',
+        ledColor: '#ef4444',
+        borderHex: '#8aa660',
+        iconColor: '#a3be78',
+        layout: 'triangle',
+        knobs: [
+          { key: 'Drive', label: 'Drive', value: 62 },
+          { key: 'Volume', label: 'Volume', value: 70 },
+          { key: 'Tone', label: 'Tone', value: 58 }
+        ]
+      },
+      {
+        id: 'stomp_analog_delay',
+        name: 'Analog Delay',
+        shortName: 'ANALOG DLY',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #32b877 0%, #239b60 55%, #19824e 100%)',
+        borderColor: '#166e42',
+        textColor: '#0a1f14',
+        ledColor: '#ef4444',
+        borderHex: '#239b60',
+        iconColor: '#32b877',
+        layout: 'triangle',
+        knobs: [
+          { key: 'Time', label: 'Time', value: 44 },
+          { key: 'Mix', label: 'Mix', value: 48 },
+          { key: 'Repeat', label: 'Repeat', value: 40 }
+        ]
+      },
+      {
+        id: 'stomp_crunch_dist',
+        name: 'Crunch Distortion',
+        shortName: 'CRUNCH DIST',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #4cc3d9 0%, #31a8bf 55%, #238ea3 100%)',
+        borderColor: '#1d788a',
+        textColor: '#0b2229',
+        ledColor: '#ef4444',
+        borderHex: '#31a8bf',
+        iconColor: '#4cc3d9',
+        layout: 'triangle',
+        knobs: [
+          { key: 'Gain', label: 'Gain', value: 68 },
+          { key: 'Volume', label: 'Volume', value: 65 },
+          { key: 'Tone', label: 'Tone', value: 55 }
+        ]
+      },
+      {
+        id: 'stomp_us_dream',
+        name: 'US Dream',
+        shortName: 'US DREAM',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #a682c4 0%, #8c66ad 55%, #765196 100%)',
+        borderColor: '#634180',
+        textColor: '#1b1026',
+        ledColor: '#ef4444',
+        borderHex: '#8c66ad',
+        iconColor: '#a682c4',
+        layout: 'triangle',
+        knobs: [
+          { key: 'Volume', label: 'Volume', value: 66 },
+          { key: 'Dist', label: 'Dist', value: 74 },
+          { key: 'Tone', label: 'Tone', value: 60 }
+        ]
+      },
+      {
+        id: 'stomp_digital_delay',
+        name: 'Digital Delay',
+        shortName: 'DIGITAL DLY',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #b59f94 0%, #9b8479 55%, #856f64 100%)',
+        borderColor: '#6e5a50',
+        textColor: '#1f1815',
+        ledColor: '#ef4444',
+        borderHex: '#9b8479',
+        iconColor: '#b59f94',
+        layout: 'triangle',
+        knobs: [
+          { key: 'Time', label: 'Time', value: 52 },
+          { key: 'Level', label: 'Level', value: 55 },
+          { key: 'Repeat', label: 'Repeat', value: 45 }
+        ]
+      },
+      {
+        id: 'stomp_ultimate_drive',
+        name: 'Ultimate Drive',
+        shortName: 'ULTIMATE DRV',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #2d3036 0%, #1d1f24 55%, #141619 100%)',
+        borderColor: '#3a3f47',
+        textColor: '#f1f5f9',
+        ledColor: '#ef4444',
+        borderHex: '#525866',
+        iconColor: '#e2e8f0',
+        layout: 'triangle-switch',
+        switchState: 'High',
+        knobs: [
+          { key: 'Gain', label: 'Gain', value: 76 },
+          { key: 'Level', label: 'Level', value: 64 },
+          { key: 'Tone', label: 'Tone', value: 52 }
+        ]
+      },
+      {
+        id: 'stomp_tremolo',
+        name: 'Tremolo',
+        shortName: 'TREMOLO',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #e0b428 0%, #c79a16 55%, #ad820c 100%)',
+        borderColor: '#8f6a08',
+        textColor: '#1f1703',
+        ledColor: '#ef4444',
+        borderHex: '#c79a16',
+        iconColor: '#e0b428',
+        layout: 'two-knobs',
+        artwork: 'bull',
+        knobs: [
+          { key: 'Intensity', label: 'Intensity', value: 65 },
+          { key: 'Rate', label: 'Rate', value: 54 }
+        ]
+      },
+      {
+        id: 'stomp_analog_chorus',
+        name: 'Analog Chorus',
+        shortName: 'ANALOG CHORUS',
+        enabled: true,
+        bgGradient: 'linear-gradient(180deg, #b8c9d4 0%, #9cb1bf 55%, #849aa8 100%)',
+        borderColor: '#6c818f',
+        textColor: '#111c24',
+        ledColor: '#ef4444',
+        borderHex: '#9cb1bf',
+        iconColor: '#b8c9d4',
+        layout: 'two-knobs',
+        knobs: [
+          { key: 'Rate', label: 'Rate', value: 42 },
+          { key: 'Depth', label: 'Depth', value: 60 }
+        ]
+      },
+      {
+        id: 'stomp_classic_chorus',
+        name: 'Classic Chorus',
+        shortName: 'CLASSIC CHORUS',
+        enabled: false,
+        bgGradient: 'linear-gradient(180deg, #d63c49 0%, #b82834 55%, #991b26 100%)',
+        borderColor: '#7d141d',
+        textColor: '#1f0507',
+        ledColor: '#ef4444',
+        borderHex: '#b82834',
+        iconColor: '#d63c49',
+        layout: 'two-knobs',
+        artwork: 'fist',
+        knobs: [
+          { key: 'Rate', label: 'Rate', value: 50 },
+          { key: 'Depth', label: 'Depth', value: 68 }
+        ]
+      },
+      {
+        id: 'stomp_vintage_phase',
+        name: 'Vintage Phase',
+        shortName: 'VINTAGE PHASE',
+        enabled: true,
+        bgGradient: 'linear-gradient(180deg, #cf8355 0%, #b5693c 55%, #99532a 100%)',
+        borderColor: '#7d411e',
+        textColor: '#210f05',
+        ledColor: '#ef4444',
+        borderHex: '#b5693c',
+        iconColor: '#cf8355',
+        layout: 'single-knob',
+        knobs: [
+          { key: 'Speed', label: 'Speed', value: 46 }
+        ]
+      }
+    ];
+
+    const EFFECT_LIBRARY = [
+      { type: 'eq', name: 'PARAMETRIC EQ', subtitle: '4-Band Sculpt', category: 'utility', borderColor: '#38bdf8', iconColor: '#38bdf8', params: { Low: 2.0, Mid: 1.5, High: 3.0, Level: 0.0 } },
+      { type: 'wah', name: 'CRY WAH', subtitle: 'Auto Envelope', category: 'filter', borderColor: '#fbbf24', iconColor: '#fbbf24', params: { Sweep: 62, Q: 4.5, Mix: 100 } },
+      ...STOMPBOX_PEDALS.map(p => ({
+        type: p.id,
+        name: p.shortName,
+        subtitle: p.name,
+        category: 'stompbox',
+        borderColor: p.borderHex,
+        iconColor: p.iconColor,
+        params: p.knobs.reduce((acc, k) => ({ ...acc, [k.key]: k.value }), {})
+      }))
+    ];
+
+    function createDefaultChain() {
+      return {
+        pre: [
+          {
+            id: 'ns1',
+            type: 'ns',
+            name: 'NOISE SUPPRESSOR',
+            subtitle: '-70 dB',
+            enabled: true,
+            borderColor: '#4c7c94',
+            iconColor: '#dc2626',
+            params: { Threshold: -70, Decay: 45, Damp: 85 }
+          },
+          {
+            id: 'comp1',
+            type: 'comp',
+            name: 'STUDIO COMPRESSOR',
+            subtitle: 'Sustain 5.0',
+            enabled: true,
+            borderColor: '#4c7c94',
+            iconColor: '#22d3ee',
+            params: { Sustain: 5.0, Attack: 12, Ratio: 4.0, Level: 2.5 }
+          },
+          {
+            id: 'tod1',
+            type: 'tod',
+            name: 'T-OD',
+            subtitle: 'Gain 4.7',
+            enabled: true,
+            borderColor: '#69b37c',
+            iconColor: '#f97316',
+            params: { Gain: 4.7, Tone: 6.2, Level: 6.5 }
+          },
+          {
+            id: 'kod1',
+            type: 'kod',
+            name: 'KOD',
+            subtitle: 'OD + OD',
+            enabled: false,
+            borderColor: '#69b37c',
+            iconColor: '#ea580c',
+            params: { DriveA: 5.5, DriveB: 6.8, Tone: 5.8, Level: 6.0 }
+          },
+          {
+            id: 'slot_pre_empty',
+            isEmpty: true,
+            slotGroup: 'pre'
+          }
+        ],
+        split: {
+          id: 'split1',
+          name: 'SPLIT',
+          mode: 'A/B Balance',
+          balance: 50
+        },
+        pathA: [
+          {
+            id: 'ampA',
+            type: 'amp',
+            name: 'AMP',
+            subtitle: 'Clean',
+            enabled: true,
+            borderColor: '#b36b3f',
+            iconColor: '#dc2626',
+            params: { Gain: 3.4, Bass: 5.8, Mid: 5.2, Treble: 6.6, Master: 7.5 }
+          },
+          {
+            id: 'cabA',
+            type: 'cab',
+            name: 'CAB',
+            subtitle: '1x10 Open Back',
+            enabled: true,
+            borderColor: '#9e8d71',
+            iconColor: '#cbd5e1',
+            params: { MicPos: 3.0, LowCut: 80, HighCut: 8500, Level: 0.0 }
+          },
+          {
+            id: 'slot_pathA_empty',
+            isEmpty: true,
+            slotGroup: 'pathA'
+          }
+        ],
+        pathB: [
+          {
+            id: 'ampB',
+            type: 'amp',
+            name: 'AMP',
+            subtitle: 'Crunch',
+            enabled: true,
+            borderColor: '#b36b3f',
+            iconColor: '#dc2626',
+            params: { Gain: 6.8, Bass: 6.2, Mid: 6.5, Treble: 7.0, Master: 7.2 }
+          },
+          {
+            id: 'cabB',
+            type: 'cab',
+            name: 'CAB',
+            subtitle: '2x12 Alnico',
+            enabled: true,
+            borderColor: '#9e8d71',
+            iconColor: '#cbd5e1',
+            params: { MicPos: 4.5, LowCut: 85, HighCut: 7800, Level: 0.0 }
+          },
+          {
+            id: 'slot_pathB_empty',
+            isEmpty: true,
+            slotGroup: 'pathB'
+          }
+        ],
+        mix: {
+          id: 'mix1',
+          name: 'MIX',
+          subtitle: 'level pan',
+          levelA: 0.0,
+          panA: -35,
+          levelB: 0.0,
+          panB: 35
+        },
+        post: [
+          {
+            id: 'mod1',
+            type: 'mod',
+            name: 'MODULATION',
+            subtitle: 'Chorus · 1/4',
+            enabled: false,
+            borderColor: '#34d399',
+            iconColor: '#22c55e',
+            params: { Rate: 1.8, Depth: 55, Mix: 40 }
+          },
+          {
+            id: 'dly1',
+            type: 'delay',
+            name: 'DELAY',
+            subtitle: 'Ping Pong · 1/8.',
+            enabled: true,
+            borderColor: '#3b82f6',
+            iconColor: '#2563eb',
+            params: { Time: 375, Feedback: 38, Mix: 32 }
+          },
+          {
+            id: 'rev1',
+            type: 'reverb',
+            name: 'REVERB',
+            subtitle: 'Cloud · 11.7 s',
+            enabled: true,
+            borderColor: '#3ea89c',
+            iconColor: '#9333ea',
+            params: { Decay: 11.7, PreDelay: 45, Mix: 36 }
+          },
+          {
+            id: 'rev2',
+            type: 'reverb',
+            name: 'REVERB',
+            subtitle: 'Hall · 8.0 s',
+            enabled: false,
+            borderColor: '#3ea89c',
+            iconColor: '#9333ea',
+            params: { Decay: 8.0, PreDelay: 25, Mix: 28 }
+          }
+        ]
+      };
+    }
+
+    const DEFAULT_SCENES = [
+      { id: 'A', name: 'CLEAN', cc: 'CC 60', states: { ns1: true, comp1: true, tod1: false, kod1: false, ampA: true, cabA: true, ampB: false, cabB: false, mod1: true, dly1: false, rev1: false, rev2: true } },
+      { id: 'B', name: 'CRUNCH', cc: 'CC 61', states: { ns1: true, comp1: true, tod1: false, kod1: false, ampA: false, cabA: false, ampB: true, cabB: true, mod1: false, dly1: false, rev1: false, rev2: true } },
+      { id: 'C', name: 'RHYTHM', cc: 'CC 62', states: { ns1: true, comp1: true, tod1: true, kod1: false, ampA: false, cabA: false, ampB: true, cabB: true, mod1: false, dly1: false, rev1: false, rev2: false } },
+      { id: 'D', name: 'LEAD', cc: 'CC 63', states: { ns1: true, comp1: true, tod1: true, kod1: false, ampA: true, cabA: true, ampB: true, cabB: true, mod1: false, dly1: true, rev1: true, rev2: false } },
+      { id: 'E', name: 'SOLO', cc: 'CC 64', states: { ns1: true, comp1: true, tod1: true, kod1: true, ampA: true, cabA: true, ampB: true, cabB: true, mod1: false, dly1: true, rev1: true, rev2: false } },
+      { id: 'F', name: 'AMBIENT', cc: 'CC 65', states: { ns1: true, comp1: true, tod1: false, kod1: false, ampA: true, cabA: true, ampB: false, cabB: false, mod1: true, dly1: true, rev1: true, rev2: true } },
+      { id: 'G', name: 'DRY', cc: 'CC 66', states: { ns1: true, comp1: false, tod1: false, kod1: false, ampA: true, cabA: true, ampB: false, cabB: false, mod1: false, dly1: false, rev1: false, rev2: false } },
+      { id: 'H', name: 'BIG', cc: 'CC 67', states: { ns1: true, comp1: true, tod1: true, kod1: true, ampA: true, cabA: true, ampB: true, cabB: true, mod1: true, dly1: true, rev1: true, rev2: true } }
+    ];
+
+    const appState = {
+      currentBank: 1,
+      totalBanks: 4,
+      activePresetIndex: 1,
+      activeSceneIndex: 3,
+      activeView: 'chain',
+      liveMode: true,
+      scenesVisible: true,
+      selectedBlockId: null,
+      modified: true,
+      inputGain: 1.0,
+      outputGain: 0.85,
+      banks: {
+        1: [
+          { letter: 'A', name: 'Starter', pc: 'PC 1', empty: false, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'B', name: 'Dual Amp', pc: 'PC 2', empty: false, chain: createDefaultChain(), scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'C', name: 'empty', pc: 'PC 3', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'D', name: 'empty', pc: 'PC 4', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) }
+        ],
+        2: [
+          { letter: 'A', name: 'Boutique Edge', pc: 'PC 5', empty: false, chain: createDefaultChain(), scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'B', name: 'Shimmer Cloud', pc: 'PC 6', empty: false, chain: createDefaultChain(), scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'C', name: 'empty', pc: 'PC 7', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'D', name: 'empty', pc: 'PC 8', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) }
+        ],
+        3: [
+          { letter: 'A', name: 'Modern Metal', pc: 'PC 9', empty: false, chain: createDefaultChain(), scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'B', name: 'empty', pc: 'PC 10', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'C', name: 'empty', pc: 'PC 11', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'D', name: 'empty', pc: 'PC 12', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) }
+        ],
+        4: [
+          { letter: 'A', name: 'Studio DI', pc: 'PC 13', empty: false, chain: createDefaultChain(), scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'B', name: 'empty', pc: 'PC 14', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'C', name: 'empty', pc: 'PC 15', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) },
+          { letter: 'D', name: 'empty', pc: 'PC 16', empty: true, chain: null, scenes: JSON.parse(JSON.stringify(DEFAULT_SCENES)) }
+        ]
+      }
+    };
+
+    const starterChain = createDefaultChain();
+    starterChain.pre.find(b => b.id === 'tod1').enabled = false;
+    starterChain.pathB.find(b => b.id === 'ampB').enabled = false;
+    starterChain.pathB.find(b => b.id === 'cabB').enabled = false;
+    appState.banks[1][0].chain = starterChain;
+
+    function getCurrentPreset() {
+      return appState.banks[appState.currentBank][appState.activePresetIndex];
+    }
+
+    function getCurrentChain() {
+      const preset = getCurrentPreset();
+      if (!preset.chain) {
+        preset.chain = createDefaultChain();
+      }
+      return preset.chain;
+    }
+
+    function getAllBlocks(chain = getCurrentChain()) {
+      return [...chain.pre, ...chain.pathA, ...chain.pathB, ...chain.post].filter(b => !b.isEmpty);
+    }
+
+    function findBlockById(id) {
+      const chain = getCurrentChain();
+      if (id === 'split1') return chain.split;
+      if (id === 'mix1') return chain.mix;
+      return getAllBlocks(chain).find(b => b.id === id);
+    }
+
+    /* ==================== SVG ICON LIBRARY FOR PEDAL BLOCKS ==================== */
+    function getBlockSvg(type, color) {
+      switch (type) {
+        case 'ns':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <path d="M13 4V24M35 4V24" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+              <path d="M13 6L18 11V17L13 22M35 6L30 11V17L35 22" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M6 14H10L12 10L14 18L16 12L18 14H30L32 11L34 17L36 13L38 14H42" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+        case 'comp':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <path d="M10 8L16 14L10 20" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M38 8L32 14L38 20" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="20" y1="9" x2="20" y2="19" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+              <line x1="24" y1="6" x2="24" y2="22" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="28" y1="10" x2="28" y2="18" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+            </svg>`;
+        case 'tod':
+        case 'kod':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <path d="M6 14H15L18 9L22 20L26 7L30 17L33 14H42" stroke="${color}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+        case 'amp':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <rect x="8" y="6" width="32" height="16" rx="2.5" stroke="${color}" stroke-width="1.8" fill="${color}" fill-opacity="0.22"/>
+              <rect x="11" y="9" width="26" height="5" rx="1" stroke="${color}" stroke-width="1.2"/>
+              <circle cx="14" cy="18" r="1.2" fill="${color}"/>
+              <circle cx="18" cy="18" r="1.2" fill="${color}"/>
+              <circle cx="22" cy="18" r="1.2" fill="${color}"/>
+              <circle cx="26" cy="18" r="1.2" fill="${color}"/>
+              <circle cx="30" cy="18" r="1.2" fill="${color}"/>
+              <circle cx="34" cy="18" r="1.2" fill="${color}"/>
+              <path d="M19 6V4.5H29V6" stroke="${color}" stroke-width="1.5"/>
+            </svg>`;
+        case 'cab':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <rect x="8" y="5" width="32" height="18" rx="2.5" stroke="${color}" stroke-width="1.7"/>
+              <circle cx="24" cy="14" r="6" stroke="${color}" stroke-width="1.5"/>
+              <circle cx="24" cy="14" r="2.2" fill="${color}"/>
+              <circle cx="12" cy="8.5" r="0.9" fill="${color}"/>
+              <circle cx="36" cy="8.5" r="0.9" fill="${color}"/>
+              <circle cx="12" cy="19.5" r="0.9" fill="${color}"/>
+              <circle cx="36" cy="19.5" r="0.9" fill="${color}"/>
+            </svg>`;
+        case 'mod':
+        case 'phaser':
+        case 'tremolo':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <path d="M8 9C11 6.5 14 6.5 17 9C20 11.5 23 11.5 26 9C29 6.5 32 6.5 35 9C37 10.5 39 10.5 40 9" stroke="${color}" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M8 14C11 11.5 14 11.5 17 14C20 16.5 23 16.5 26 14C29 11.5 32 11.5 35 14C37 15.5 39 15.5 40 14" stroke="${color}" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M8 19C11 16.5 14 16.5 17 19C20 21.5 23 21.5 26 19C29 16.5 32 16.5 35 19C37 20.5 39 20.5 40 19" stroke="${color}" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>`;
+        case 'delay':
+        case 'delay2':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <path d="M10 6L21 14L10 22V6Z" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M21 8.5L29 14L21 19.5" stroke="${color}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M29 10.5L35 14L29 17.5" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+        case 'reverb':
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <path d="M10 21C10 13.268 16.268 7 24 7C31.732 7 38 13.268 38 21" stroke="${color}" stroke-width="2.1" stroke-linecap="round"/>
+              <path d="M14.5 21C14.5 15.753 18.753 11.5 24 11.5C29.247 11.5 33.5 15.753 33.5 21" stroke="${color}" stroke-width="2.1" stroke-linecap="round"/>
+              <path d="M19 21C19 18.239 21.239 16 24 16C26.761 16 29 18.239 29 21" stroke="${color}" stroke-width="2.1" stroke-linecap="round"/>
+            </svg>`;
+        default:
+          return `
+            <svg class="w-11 h-7 pedal-icon" viewBox="0 0 48 28" fill="none">
+              <line x1="12" y1="7" x2="12" y2="21" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="11" r="2.5" fill="#181b20" stroke="${color}" stroke-width="2"/>
+              <line x1="24" y1="7" x2="24" y2="21" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="24" cy="17" r="2.5" fill="#181b20" stroke="${color}" stroke-width="2"/>
+              <line x1="36" y1="7" x2="36" y2="21" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="36" cy="12" r="2.5" fill="#181b20" stroke="${color}" stroke-width="2"/>
+            </svg>`;
+      }
+    }
+
+    /* ==================== RENDER SIGNAL CHAIN UI ==================== */
+    function renderPedalCard(block) {
+      if (block.isEmpty) {
+        return `
+          <button onclick="openEffectPicker('${block.slotGroup}')"
+            title="Add Effect Block"
+            class="w-[96px] sm:w-[106px] h-[116px] sm:h-[124px] rounded-2xl border border-dashed border-[#343a46] hover:border-amber-400/70 bg-[#15171c]/60 hover:bg-[#1b1f26] flex items-center justify-center text-slate-400 hover:text-amber-300 transition flex-shrink-0 group">
+            <span class="text-2xl font-light group-hover:scale-110 transition-transform">+</span>
+          </button>`;
+      }
+
+      const isSelected = appState.selectedBlockId === block.id;
+      const borderStyle = block.enabled ? `border-color: ${block.borderColor};` : '';
+      const ledClass = block.enabled ? 'led-on' : 'led-off';
+      const bypassedClass = block.enabled ? '' : 'bypassed';
+      const selectedClass = isSelected ? 'selected' : '';
+
+      return `
+        <div onclick="selectBlock('${block.id}')"
+          style="${borderStyle}"
+          class="pedal-card ${bypassedClass} ${selectedClass} relative w-[124px] sm:w-[134px] h-[116px] sm:h-[124px] rounded-2xl border-[1.5px] p-3 flex flex-col justify-between cursor-pointer flex-shrink-0">
+          <div class="flex items-start justify-between">
+            <div class="pt-0.5">
+              ${getBlockSvg(block.type, block.iconColor)}
+            </div>
+            <button onclick="event.stopPropagation(); toggleBlockBypass('${block.id}')"
+              title="Toggle ${block.name} On/Off"
+              class="w-3.5 h-3.5 rounded-full ${ledClass} transition-transform hover:scale-125 focus:outline-none">
+            </button>
+          </div>
+          <div class="text-left leading-tight">
+            <div class="pedal-title text-[11px] sm:text-[11.5px] font-bold tracking-wide text-slate-100 truncate">
+              ${block.name}
+            </div>
+            <div class="pedal-sub text-[10.5px] sm:text-[11px] text-slate-400 font-medium truncate mt-0.5">
+              ${block.subtitle}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderWire(width = 16) {
+      return `<div style="width:${width}px" class="h-[2px] bg-[#464d5c] flex-shrink-0"></div>`;
+    }
+
+    function renderSignalChain() {
+      const chain = getCurrentChain();
+      const container = document.getElementById('signal-chain-container');
+
+      const preHtml = chain.pre.map((block, idx) => {
+        return renderPedalCard(block) + (idx < chain.pre.length - 1 ? renderWire(14) : '');
+      }).join('');
+
+      const pathAHtml = chain.pathA.map((block, idx) => {
+        return renderPedalCard(block) + (idx < chain.pathA.length - 1 ? renderWire(14) : '');
+      }).join('');
+
+      const pathBHtml = chain.pathB.map((block, idx) => {
+        return renderPedalCard(block) + (idx < chain.pathB.length - 1 ? renderWire(14) : '');
+      }).join('');
+
+      const postHtml = chain.post.map((block, idx) => {
+        return renderPedalCard(block) + (idx < chain.post.length - 1 ? renderWire(14) : '');
+      }).join('');
+
+      const splitSelected = appState.selectedBlockId === 'split1' ? 'selected border-amber-400' : 'border-[#4e5668]';
+      const mixSelected = appState.selectedBlockId === 'mix1' ? 'selected border-amber-400' : 'border-[#4e5668]';
+
+      container.innerHTML = `
+        <div class="flex items-center">${preHtml}</div>
+        ${renderWire(14)}
+        <div onclick="selectBlock('split1')"
+          class="w-[68px] h-[68px] rounded-2xl bg-[#1a1d23] hover:bg-[#232730] border-[1.5px] ${splitSelected} flex flex-col items-center justify-center cursor-pointer flex-shrink-0 transition shadow-md">
+          <span class="text-[11px] font-bold tracking-wider text-amber-300/90">SPLIT</span>
+          <span class="text-[9px] text-slate-400 mt-0.5">${chain.split.balance}%</span>
+        </div>
+        <div class="relative w-6 h-[142px] flex-shrink-0">
+          <div class="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-[2px] bg-[#464d5c]"></div>
+          <div class="absolute left-3 top-[6px] bottom-[6px] w-[2px] bg-[#464d5c]"></div>
+          <div class="absolute left-3 top-[6px] w-3 h-[2px] bg-[#464d5c]"></div>
+          <div class="absolute left-3 bottom-[6px] w-3 h-[2px] bg-[#464d5c]"></div>
+        </div>
+        <div class="flex flex-col gap-3.5">
+          <div class="flex items-center">${pathAHtml}</div>
+          <div class="flex items-center">${pathBHtml}</div>
+        </div>
+        <div class="relative w-6 h-[142px] flex-shrink-0">
+          <div class="absolute right-3 top-[6px] w-3 h-[2px] bg-[#464d5c]"></div>
+          <div class="absolute right-3 bottom-[6px] w-3 h-[2px] bg-[#464d5c]"></div>
+          <div class="absolute right-3 top-[6px] bottom-[6px] w-[2px] bg-[#464d5c]"></div>
+          <div class="absolute right-0 top-[44%] w-3 h-[2px] bg-[#464d5c]"></div>
+          <div class="absolute right-0 top-[56%] w-3 h-[2px] bg-[#464d5c]"></div>
+        </div>
+        <div onclick="selectBlock('mix1')"
+          class="w-[72px] h-[72px] rounded-2xl bg-[#1a1d23] hover:bg-[#232730] border-[1.5px] ${mixSelected} flex flex-col items-center justify-center cursor-pointer flex-shrink-0 transition shadow-md">
+          <span class="text-[11px] font-bold tracking-wider text-amber-300/90">MIX</span>
+          <span class="text-[9.5px] text-slate-400 leading-tight text-center mt-0.5">level<br>pan</span>
+        </div>
+        <div class="w-4 h-3 flex flex-col justify-between flex-shrink-0">
+          <div class="w-full h-[1.5px] bg-[#464d5c]"></div>
+          <div class="w-full h-[1.5px] bg-[#464d5c]"></div>
+        </div>
+        <div class="flex items-center">${postHtml}</div>
+      `;
+    }
+
+    /* ==================== RENDER PRESETS & SCENES ==================== */
+    function renderPresetsBar() {
+      const bankPresets = appState.banks[appState.currentBank];
+      document.getElementById('bank-badge').textContent = `BANK ${appState.currentBank}`;
+
+      const container = document.getElementById('preset-slots-container');
+      container.innerHTML = bankPresets.map((preset, index) => {
+        const isActive = index === appState.activePresetIndex;
+        const star = isActive && appState.modified ? ' *' : '';
+
+        if (isActive) {
+          return `
+            <button onclick="selectPreset(${index})"
+              class="relative min-h-[48px] sm:min-h-[54px] px-3.5 py-2 rounded-xl bg-gradient-to-b from-[#2f2414] to-[#231b10] border-[1.5px] border-[#f59e0b] flex items-center justify-between text-left shadow-md transition">
+              <div class="flex items-center gap-2.5 truncate">
+                <span class="text-sm font-bold text-[#fbbf24]">${preset.letter}</span>
+                <span class="text-xs sm:text-sm font-semibold text-slate-100 truncate">${preset.name}${star}</span>
+              </div>
+              <span class="text-[9px] font-mono-tech font-bold text-[#f59e0b] self-start">${preset.pc}</span>
+            </button>`;
+        }
+
+        return `
+          <button onclick="selectPreset(${index})"
+            class="relative min-h-[48px] sm:min-h-[54px] px-3.5 py-2 rounded-xl bg-[#1a1d23] hover:bg-[#22262e] border border-[#2b303a] flex items-center justify-between text-left transition">
+            <div class="flex items-center gap-2.5 truncate">
+              <span class="text-sm font-bold ${preset.empty ? 'text-slate-500' : 'text-slate-300'}">${preset.letter}</span>
+              <span class="text-xs sm:text-sm font-medium ${preset.empty ? 'text-slate-500' : 'text-slate-300'} truncate">${preset.name}</span>
+            </div>
+            <span class="text-[9px] font-mono-tech font-semibold text-slate-500 self-start">${preset.pc}</span>
+          </button>`;
+      }).join('');
+    }
+
+    function renderScenesRow() {
+      const preset = getCurrentPreset();
+      const row = document.getElementById('scenes-row');
+      row.style.display = appState.scenesVisible ? 'grid' : 'none';
+
+      row.innerHTML = preset.scenes.map((scene, index) => {
+        const isActive = index === appState.activeSceneIndex;
+        if (isActive) {
+          return `
+            <button onclick="selectScene(${index})"
+              class="relative min-h-[54px] sm:min-h-[60px] px-2.5 py-2 rounded-xl bg-[#f59e0b] text-[#121417] flex flex-col items-center justify-center shadow-lg transition transform active:scale-95">
+              <span class="absolute top-1.5 right-2 text-[8.5px] font-mono-tech font-bold text-[#121417]/75">${scene.cc}</span>
+              <span class="text-sm sm:text-base font-extrabold leading-tight">${scene.id}</span>
+              <span class="text-[10px] font-extrabold tracking-wider uppercase mt-0.5">${scene.name}</span>
+            </button>`;
+        }
+
+        return `
+          <button onclick="selectScene(${index})"
+            class="relative min-h-[54px] sm:min-h-[60px] px-2.5 py-2 rounded-xl bg-[#191c22] hover:bg-[#21252d] border border-[#2b303a] text-slate-200 flex flex-col items-center justify-center transition active:scale-95">
+            <span class="absolute top-1.5 right-2 text-[8.5px] font-mono-tech font-semibold text-slate-500">${scene.cc}</span>
+            <span class="text-sm sm:text-base font-bold text-slate-200 leading-tight">${scene.id}</span>
+            <span class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mt-0.5">${scene.name}</span>
+          </button>`;
+      }).join('');
+    }
+
+    /* ==================== BLOCK SELECTION & INSPECTOR DRAWER ==================== */
+    function toggleBlockBypass(id) {
+      const block = findBlockById(id);
+      if (!block || typeof block.enabled === 'undefined') return;
+      block.enabled = !block.enabled;
+      appState.modified = true;
+
+      const preset = getCurrentPreset();
+      if (preset.scenes[appState.activeSceneIndex]) {
+        preset.scenes[appState.activeSceneIndex].states[id] = block.enabled;
+      }
+
+      if (appState.selectedBlockId === id) {
+        updateInspectorLed(block.enabled);
+      }
+      renderSignalChain();
+      renderPresetsBar();
+      updateAudioEngineParameters();
+      showToast(`${block.name}: ${block.enabled ? 'ACTIVE' : 'BYPASSED'}`);
+    }
+
+    function updateInspectorLed(enabled) {
+      const led = document.getElementById('inspector-led-btn');
+      if (led) led.className = `w-4 h-4 rounded-full cursor-pointer transition ${enabled ? 'led-on' : 'led-off'}`;
+    }
+
+    function selectBlock(id) {
+      if (appState.selectedBlockId === id) {
+        closeInspector();
+        return;
+      }
+      appState.selectedBlockId = id;
+      renderSignalChain();
+
+      const drawer = document.getElementById('inspector-drawer');
+      const titleEl = document.getElementById('inspector-title');
+      const modelEl = document.getElementById('inspector-model');
+      const controlsEl = document.getElementById('inspector-controls');
+      const removeBtn = document.getElementById('inspector-remove-btn');
+      const ledBtn = document.getElementById('inspector-led-btn');
+
+      if (!drawer) return;
+      drawer.classList.remove('hidden');
+
+      if (id === 'split1') {
+        const split = getCurrentChain().split;
+        titleEl.textContent = 'SPLIT ROUTER';
+        modelEl.textContent = 'Parallel A/B Splitter';
+        ledBtn.classList.add('hidden');
+        removeBtn.classList.add('hidden');
+        controlsEl.innerHTML = `
+          <div class="col-span-2 sm:col-span-3 bg-[#13161b] p-3 rounded-xl border border-[#252a34]">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400 font-medium">Path A / Path B Balance</span>
+              <span id="val-split-bal" class="font-mono-tech text-amber-400 font-semibold">${split.balance}% / ${100 - split.balance}%</span>
+            </div>
+            <input type="range" min="0" max="100" value="${split.balance}" class="dsp-slider w-full"
+              oninput="updateSplitParam(this.value)">
+          </div>`;
+        return;
+      }
+
+      if (id === 'mix1') {
+        const mix = getCurrentChain().mix;
+        titleEl.textContent = 'STEREO MIXER';
+        modelEl.textContent = 'Path A & B Level / Pan';
+        ledBtn.classList.add('hidden');
+        removeBtn.classList.add('hidden');
+        controlsEl.innerHTML = `
+          <div class="bg-[#13161b] p-3 rounded-xl border border-[#252a34]">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">Path A Level</span>
+              <span id="val-mix-la" class="font-mono-tech text-amber-400">${mix.levelA} dB</span>
+            </div>
+            <input type="range" min="-24" max="6" step="0.5" value="${mix.levelA}" class="dsp-slider w-full"
+              oninput="updateMixParam('levelA', this.value, 'val-mix-la', ' dB')">
+          </div>
+          <div class="bg-[#13161b] p-3 rounded-xl border border-[#252a34]">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">Path A Pan</span>
+              <span id="val-mix-pa" class="font-mono-tech text-amber-400">${mix.panA}</span>
+            </div>
+            <input type="range" min="-100" max="100" step="5" value="${mix.panA}" class="dsp-slider w-full"
+              oninput="updateMixParam('panA', this.value, 'val-mix-pa', '')">
+          </div>
+          <div class="bg-[#13161b] p-3 rounded-xl border border-[#252a34]">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">Path B Level</span>
+              <span id="val-mix-lb" class="font-mono-tech text-amber-400">${mix.levelB} dB</span>
+            </div>
+            <input type="range" min="-24" max="6" step="0.5" value="${mix.levelB}" class="dsp-slider w-full"
+              oninput="updateMixParam('levelB', this.value, 'val-mix-lb', ' dB')">
+          </div>
+          <div class="bg-[#13161b] p-3 rounded-xl border border-[#252a34]">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">Path B Pan</span>
+              <span id="val-mix-pb" class="font-mono-tech text-amber-400">+${mix.panB}</span>
+            </div>
+            <input type="range" min="-100" max="100" step="5" value="${mix.panB}" class="dsp-slider w-full"
+              oninput="updateMixParam('panB', this.value, 'val-mix-pb', '')">
+          </div>`;
+        return;
+      }
+
+      const block = findBlockById(id);
+      if (!block) return;
+
+      ledBtn.classList.remove('hidden');
+      updateInspectorLed(block.enabled);
+      ledBtn.onclick = () => toggleBlockBypass(block.id);
+
+      if (block.isCustom) {
+        removeBtn.classList.remove('hidden');
+        removeBtn.onclick = () => removeCustomBlock(block.id);
+      } else {
+        removeBtn.classList.add('hidden');
+      }
+
+      titleEl.textContent = block.name;
+      modelEl.textContent = block.subtitle;
+
+      controlsEl.innerHTML = Object.entries(block.params).map(([paramName, val]) => {
+        const range = getParamRange(block.type, paramName);
+        return `
+          <div class="bg-[#13161b] p-2.5 sm:p-3 rounded-xl border border-[#252a34]">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400 font-medium">${paramName}</span>
+              <span id="param-readout-${paramName}" class="font-mono-tech text-amber-400 font-semibold">${formatParamValue(paramName, val)}</span>
+            </div>
+            <input type="range" min="${range.min}" max="${range.max}" step="${range.step}" value="${val}"
+              class="dsp-slider w-full"
+              oninput="updateBlockParam('${block.id}', '${paramName}', parseFloat(this.value))">
+          </div>`;
+      }).join('');
+    }
+
+    function closeInspector() {
+      appState.selectedBlockId = null;
+      const drawer = document.getElementById('inspector-drawer');
+      if (drawer) drawer.classList.add('hidden');
+      renderSignalChain();
+    }
+
+    function getParamRange(type, param) {
+      if (type && type.startsWith('stomp_')) return { min: 0, max: 100, step: 1 };
+      if (param === 'Threshold') return { min: -90, max: -20, step: 1 };
+      if (param === 'Decay' && type === 'reverb') return { min: 0.5, max: 20.0, step: 0.1 };
+      if (param === 'Decay') return { min: 10, max: 200, step: 5 };
+      if (param === 'Time') return { min: 50, max: 1000, step: 5 };
+      if (param === 'LowCut') return { min: 20, max: 300, step: 5 };
+      if (param === 'HighCut') return { min: 2500, max: 16000, step: 100 };
+      if (param === 'PreDelay') return { min: 0, max: 150, step: 5 };
+      if (['Mix', 'Depth', 'Feedback', 'Damp', 'Sweep'].includes(param)) return { min: 0, max: 100, step: 1 };
+      if (['Rate', 'Speed'].includes(param)) return { min: 0.1, max: 10.0, step: 0.1 };
+      if (param === 'Attack') return { min: 1, max: 100, step: 1 };
+      return { min: 0, max: 10, step: 0.1 };
+    }
+
+    function formatParamValue(param, val) {
+      if (param === 'Threshold') return `${val} dB`;
+      if (param === 'Decay' && val <= 20) return `${val.toFixed(1)} s`;
+      if (param === 'Time' || param === 'PreDelay' || param === 'Attack') return `${val} ms`;
+      if (param === 'LowCut' || param === 'HighCut') return `${val} Hz`;
+      if (['Mix', 'Depth', 'Feedback', 'Damp', 'Sweep'].includes(param)) return `${val}%`;
+      return val.toFixed(1);
+    }
+
+    function updateBlockParam(id, paramName, value) {
+      const block = findBlockById(id);
+      if (!block) return;
+      block.params[paramName] = value;
+      appState.modified = true;
+
+      const readout = document.getElementById(`param-readout-${paramName}`);
+      if (readout) readout.textContent = formatParamValue(paramName, value);
+
+      if (block.type === 'ns' && paramName === 'Threshold') block.subtitle = `${value} dB`;
+      if (block.type === 'comp' && paramName === 'Sustain') block.subtitle = `Sustain ${value.toFixed(1)}`;
+      if (block.type === 'tod' && paramName === 'Gain') block.subtitle = `Gain ${value.toFixed(1)}`;
+      if (block.type === 'reverb' && paramName === 'Decay') {
+        const prefix = block.subtitle.split('·')[0].trim();
+        block.subtitle = `${prefix} · ${value.toFixed(1)} s`;
+      }
+      if (block.type === 'delay' && paramName === 'Time') {
+        block.subtitle = `Ping Pong · ${value}ms`;
+      }
+
+      const modelEl = document.getElementById('inspector-model');
+      if (modelEl) modelEl.textContent = block.subtitle;
+
+      renderSignalChain();
+      renderPresetsBar();
+      updateAudioEngineParameters();
+    }
+
+    function updateSplitParam(val) {
+      const split = getCurrentChain().split;
+      split.balance = parseInt(val, 10);
+      const balEl = document.getElementById('val-split-bal');
+      if (balEl) balEl.textContent = `${split.balance}% / ${100 - split.balance}%`;
+      renderSignalChain();
+      updateAudioEngineParameters();
+    }
+
+    function updateMixParam(key, val, elId, suffix) {
+      const mix = getCurrentChain().mix;
+      mix[key] = parseFloat(val);
+      const prefix = key.startsWith('pan') && mix[key] > 0 ? '+' : '';
+      const el = document.getElementById(elId);
+      if (el) el.textContent = `${prefix}${mix[key]}${suffix}`;
+      updateAudioEngineParameters();
+    }
+
+    /* ==================== ADD / REMOVE CUSTOM BLOCKS ==================== */
+    function openEffectPicker(slotGroup) {
+      openModal('Add Effect Block', `
+        <p class="text-xs text-slate-400 mb-3">Choose a DSP pedal or utility module to insert into <span class="text-amber-400 font-semibold uppercase">${slotGroup}</span>:</p>
+        <div class="grid grid-cols-2 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
+          ${EFFECT_LIBRARY.map((fx, i) => `
+            <button onclick="insertCustomBlock('${slotGroup}', ${i})"
+              class="p-3 rounded-xl bg-[#13161b] hover:bg-[#1f242d] border border-[#2c323f] hover:border-amber-400/60 flex items-center gap-3 text-left transition">
+              ${getBlockSvg(fx.type, fx.iconColor)}
+              <div>
+                <div class="text-xs font-bold text-slate-100">${fx.name}</div>
+                <div class="text-[10px] text-slate-400 truncate max-w-[130px]">${fx.subtitle}</div>
+              </div>
+            </button>
+          `).join('')}
+        </div>
+      `);
+    }
+
+    function insertCustomBlock(slotGroup, libIndex) {
+      const template = EFFECT_LIBRARY[libIndex];
+      const chain = getCurrentChain();
+      const targetArray = chain[slotGroup];
+      const emptyIdx = targetArray.findIndex(b => b.isEmpty);
+
+      const newBlock = {
+        id: `custom_${Date.now()}`,
+        type: template.type,
+        name: template.name,
+        subtitle: template.subtitle,
+        enabled: true,
+        isCustom: true,
+        slotGroup,
+        borderColor: template.borderColor,
+        iconColor: template.iconColor,
+        params: { ...template.params }
+      };
+
+      if (emptyIdx !== -1) {
+        targetArray[emptyIdx] = newBlock;
+      } else {
+        targetArray.push(newBlock);
+      }
+
+      appState.modified = true;
+      closeModal();
+      renderSignalChain();
+      renderPresetsBar();
+      selectBlock(newBlock.id);
+      showToast(`Added ${newBlock.name}`);
+    }
+
+    function removeCustomBlock(id) {
+      const chain = getCurrentChain();
+      ['pre', 'pathA', 'pathB'].forEach(group => {
+        const idx = chain[group].findIndex(b => b.id === id);
+        if (idx !== -1) {
+          chain[group][idx] = { id: `slot_${group}_empty`, isEmpty: true, slotGroup: group };
+        }
+      });
+      closeInspector();
+      renderSignalChain();
+      showToast('Removed Effect Block');
+    }
+
+    /* ==================== BANK, PRESET & SCENE SWITCHING ==================== */
+    function selectScene(index) {
+      appState.activeSceneIndex = index;
+      const preset = getCurrentPreset();
+      const scene = preset.scenes[index];
+      const chain = getCurrentChain();
+
+      getAllBlocks(chain).forEach(block => {
+        if (scene.states.hasOwnProperty(block.id)) {
+          block.enabled = scene.states[block.id];
+        }
+      });
+
+      renderScenesRow();
+      renderSignalChain();
+      if (appState.selectedBlockId) {
+        const b = findBlockById(appState.selectedBlockId);
+        if (b && typeof b.enabled !== 'undefined') updateInspectorLed(b.enabled);
+      }
+      updateAudioEngineParameters();
+      showToast(`Scene ${scene.id}: ${scene.name} (${scene.cc})`);
+    }
+
+    function selectPreset(index) {
+      appState.activePresetIndex = index;
+      const preset = getCurrentPreset();
+
+      if (preset.empty) {
+        preset.empty = false;
+        preset.name = `User Tone ${index + 1}`;
+        preset.chain = createDefaultChain();
+        appState.modified = false;
+      } else {
+        appState.modified = (appState.currentBank === 1 && index === 1);
+      }
+
+      closeInspector();
+      selectScene(appState.activeSceneIndex);
+      renderPresetsBar();
+      showToast(`Loaded Preset ${preset.letter}: ${preset.name}`);
+    }
+
+    document.getElementById('btn-bank-prev').addEventListener('click', () => {
+      appState.currentBank = appState.currentBank > 1 ? appState.currentBank - 1 : appState.totalBanks;
+      renderPresetsBar();
+      showToast(`Switched to BANK ${appState.currentBank}`);
+    });
+
+    document.getElementById('btn-bank-next').addEventListener('click', () => {
+      appState.currentBank = appState.currentBank < appState.totalBanks ? appState.currentBank + 1 : 1;
+      renderPresetsBar();
+      showToast(`Switched to BANK ${appState.currentBank}`);
+    });
+
+    /* ==================== STOMPBOX RACK VIEW & ROTARY KNOBS ==================== */
+    function switchMainView(viewName) {
+      appState.activeView = viewName;
+      const chainView = document.getElementById('view-signal-chain');
+      const stompView = document.getElementById('view-stompbox-rack');
+      const stompBtn = document.getElementById('btn-stompbox-view');
+
+      if (viewName === 'stompboxes') {
+        chainView.classList.add('hidden');
+        stompView.classList.remove('hidden');
+        stompBtn.classList.add('border-amber-400', 'bg-[#252a34]', 'text-amber-300');
+        renderStompboxRack();
+      } else {
+        stompView.classList.add('hidden');
+        chainView.classList.remove('hidden');
+        stompBtn.classList.remove('border-amber-400', 'bg-[#252a34]', 'text-amber-300');
+        renderSignalChain();
+      }
+    }
+
+    document.getElementById('btn-stompbox-view').addEventListener('click', () => {
+      switchMainView(appState.activeView === 'stompboxes' ? 'chain' : 'stompboxes');
+    });
+
+    function playFootswitchClickSound() {
+      if (!audioEngine.ctx) return;
+      const ctx = audioEngine.ctx;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1600, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.025);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.025);
+    }
+
+    function toggleStompbox(pedalId) {
+      const pedal = STOMPBOX_PEDALS.find(p => p.id === pedalId);
+      if (!pedal) return;
+      pedal.enabled = !pedal.enabled;
+      playFootswitchClickSound();
+      updateStompboxBadge();
+      renderStompboxRack();
+      updateAudioEngineParameters();
+      showToast(`${pedal.name}: ${pedal.enabled ? 'ON (TRUE BYPASS ENGAGED)' : 'BYPASSED'}`);
+    }
+
+    function toggleUltimateDriveSwitch(pedalId) {
+      const pedal = STOMPBOX_PEDALS.find(p => p.id === pedalId);
+      if (!pedal) return;
+      pedal.switchState = pedal.switchState === 'High' ? 'Low' : 'High';
+      playFootswitchClickSound();
+      renderStompboxRack();
+      updateAudioEngineParameters();
+      showToast(`${pedal.name} Gain Voicing: ${pedal.switchState.toUpperCase()}`);
+    }
+
+    function bypassAllStompboxes() {
+      STOMPBOX_PEDALS.forEach(p => { p.enabled = false; });
+      playFootswitchClickSound();
+      updateStompboxBadge();
+      renderStompboxRack();
+      updateAudioEngineParameters();
+      showToast('All 10 Stompboxes Bypassed');
+    }
+
+    function updateStompboxBadge() {
+      const count = STOMPBOX_PEDALS.filter(p => p.enabled).length;
+      const badge = document.getElementById('stomp-active-badge');
+      if (badge) badge.textContent = count;
+    }
+
+    function getStompArtworkSvg(artType) {
+      if (artType === 'bull') {
+        return `
+          <svg class="w-14 h-12 mx-auto my-0.5 opacity-85" viewBox="0 0 64 52" fill="#1f1703">
+            <path d="M18 10C13 6 9 9 11 15C13 18 18 18 22 17L26 22L20 32L14 44H19L25 35L32 36L38 45H43L39 33L46 27L52 34L55 31L48 21C49 16 45 12 40 13C38 9 34 8 30 11L25 13C22 10 20 10 18 10Z"/>
+            <path d="M11 11C7 7 8 2 14 4C11 6 11 9 13 11Z"/>
+            <path d="M23 11C25 6 22 2 18 5C21 6 21 9 20 11Z"/>
+          </svg>`;
+      }
+      if (artType === 'fist') {
+        return `
+          <svg class="w-14 h-11 mx-auto my-0.5 opacity-85" viewBox="0 0 64 48" fill="#1f0507">
+            <rect x="18" y="10" width="28" height="22" rx="6"/>
+            <rect x="20" y="7" width="5.5" height="10" rx="2.5"/>
+            <rect x="26.5" y="6" width="5.5" height="11" rx="2.5"/>
+            <rect x="33" y="7" width="5.5" height="10" rx="2.5"/>
+            <rect x="39.5" y="9" width="5" height="9" rx="2.2"/>
+            <rect x="14" y="18" width="14" height="6" rx="3" transform="rotate(-15 14 18)"/>
+            <path d="M21 32H43L40 41H24L21 32Z"/>
+            <circle cx="12" cy="14" r="1.5"/><circle cx="10" cy="24" r="1.2"/><circle cx="51" cy="16" r="1.5"/>
+          </svg>`;
+      }
+      return '';
+    }
+
+    function renderSingleKnobHtml(pedal, knob, sizeClass = 'w-9 h-9 sm:w-10 sm:h-10') {
+      const deg = -135 + (knob.value / 100) * 270;
+      return `
+        <div class="flex flex-col items-center">
+          <div
+            onmousedown="startKnobDrag(event, '${pedal.id}', '${knob.key}')"
+            ontouchstart="startKnobDrag(event, '${pedal.id}', '${knob.key}')"
+            onwheel="handleKnobWheel(event, '${pedal.id}', '${knob.key}')"
+            title="${knob.label}: ${knob.value}% (Drag up/down or scroll)"
+            class="stomp-knob-cap ${sizeClass} rounded-full relative flex items-center justify-center border border-black/80">
+            <div id="knob-dial-${pedal.id}-${knob.key}" style="transform: rotate(${deg}deg);" class="w-full h-full rounded-full relative pointer-events-none">
+              <div class="w-[2.5px] h-3 bg-white rounded-full mx-auto mt-1 shadow"></div>
+            </div>
+          </div>
+          <span class="text-[9.5px] font-bold tracking-tight mt-1 leading-none" style="color:${pedal.textColor};">${knob.label}</span>
+        </div>`;
+    }
+
+    function renderStompboxRack() {
+      const grid = document.getElementById('stompbox-grid');
+      if (!grid) return;
+
+      grid.innerHTML = STOMPBOX_PEDALS.map(pedal => {
+        let knobsSection = '';
+        if (pedal.layout === 'triangle' || pedal.layout === 'triangle-switch') {
+          knobsSection = `
+            <div class="grid grid-cols-2 gap-x-2 gap-y-1 px-1 pt-1">
+              ${renderSingleKnobHtml(pedal, pedal.knobs[0])}
+              ${renderSingleKnobHtml(pedal, pedal.knobs[1])}
+              <div class="col-span-2 flex justify-center -mt-0.5">
+                ${renderSingleKnobHtml(pedal, pedal.knobs[2])}
+              </div>
+            </div>`;
+        } else if (pedal.layout === 'two-knobs') {
+          knobsSection = `
+            <div class="grid grid-cols-2 gap-2 px-1.5 pt-2">
+              ${renderSingleKnobHtml(pedal, pedal.knobs[0], 'w-10 h-10 sm:w-11 sm:h-11')}
+              ${renderSingleKnobHtml(pedal, pedal.knobs[1], 'w-10 h-10 sm:w-11 sm:h-11')}
+            </div>`;
+        } else if (pedal.layout === 'single-knob') {
+          knobsSection = `
+            <div class="flex justify-center pt-5 pb-1">
+              ${renderSingleKnobHtml(pedal, pedal.knobs[0], 'w-11 h-11 sm:w-12 sm:h-12')}
+            </div>`;
+        }
+
+        const ledHtml = `
+          <div class="w-3.5 h-3.5 rounded-full border border-black/50 p-[1px] bg-slate-300/60 mx-auto my-1">
+            <div class="w-full h-full rounded-full ${pedal.enabled ? 'stomp-led-on' : 'stomp-led-off'}"></div>
+          </div>`;
+
+        const switchHtml = pedal.layout === 'triangle-switch' ? `
+          <div class="flex flex-col items-center my-0.5">
+            <span class="text-[8px] font-bold uppercase tracking-wider text-slate-300">High</span>
+            <button onclick="toggleUltimateDriveSwitch('${pedal.id}')" title="Toggle High / Low Clipping"
+              class="w-5 h-6 rounded-md bg-slate-700 border border-slate-400 flex items-center justify-center my-0.5 shadow-inner">
+              <div class="w-2.5 h-3 rounded-sm bg-gradient-to-b from-white to-slate-400 transition-transform ${pedal.switchState === 'High' ? '-translate-y-1' : 'translate-y-1'}"></div>
+            </button>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-slate-300">Low</span>
+          </div>` : '';
+
+        const artworkHtml = pedal.artwork ? getStompArtworkSvg(pedal.artwork) : '';
+
+        return `
+          <div style="background:${pedal.bgGradient}; border-color:${pedal.borderColor};"
+            class="stomp-chassis relative rounded-xl border-2 px-2.5 pt-1.5 pb-2.5 flex flex-col justify-between min-h-[248px] sm:min-h-[268px]">
+            <div class="stomp-jack absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-7 rounded-l-sm"></div>
+            <div class="stomp-jack absolute -right-2 top-1/2 -translate-y-1/2 w-1.5 h-7 rounded-r-sm"></div>
+            <div class="text-center text-[8px] font-mono-tech font-bold opacity-75 tracking-tighter" style="color:${pedal.textColor};">
+              DC9V ⊖-ⓒ-⊕
+            </div>
+            <div>${knobsSection}</div>
+            <div class="relative flex flex-col items-center justify-center my-0.5">
+              <div class="w-full flex items-center justify-between px-0.5 text-[7.5px] font-extrabold opacity-75" style="color:${pedal.textColor};">
+                <span>◀ OUT</span>
+                ${ledHtml}
+                <span>IN ◀</span>
+              </div>
+              ${switchHtml}
+              ${artworkHtml}
+            </div>
+            <div class="flex flex-col items-center mt-auto">
+              <div class="text-center font-extrabold text-[11px] sm:text-xs tracking-tight leading-tight mb-2" style="color:${pedal.textColor};">
+                ${pedal.name}
+              </div>
+              <button onclick="toggleStompbox('${pedal.id}')"
+                title="Engage / Bypass ${pedal.name}"
+                class="stomp-footswitch w-8 h-8 sm:w-9 sm:h-9 rounded-full cursor-pointer focus:outline-none">
+              </button>
+              <div class="text-[8px] font-extrabold tracking-widest uppercase mt-1.5 opacity-80" style="color:${pedal.textColor};">
+                TRUE BYPASS
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    let activeKnobDrag = null;
+
+    function startKnobDrag(e, pedalId, knobKey) {
+      e.preventDefault();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const pedal = STOMPBOX_PEDALS.find(p => p.id === pedalId);
+      const knob = pedal.knobs.find(k => k.key === knobKey);
+      activeKnobDrag = { pedal, knob, startY: clientY, startVal: knob.value };
+
+      window.addEventListener('mousemove', onKnobDragMove);
+      window.addEventListener('mouseup', stopKnobDrag);
+      window.addEventListener('touchmove', onKnobDragMove, { passive: false });
+      window.addEventListener('touchend', stopKnobDrag);
+    }
+
+    function onKnobDragMove(e) {
+      if (!activeKnobDrag) return;
+      if (e.cancelable) e.preventDefault();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const deltaY = activeKnobDrag.startY - clientY;
+      const newVal = Math.max(0, Math.min(100, Math.round(activeKnobDrag.startVal + deltaY * 0.7)));
+      activeKnobDrag.knob.value = newVal;
+
+      const dial = document.getElementById(`knob-dial-${activeKnobDrag.pedal.id}-${activeKnobDrag.knob.key}`);
+      if (dial) {
+        const deg = -135 + (newVal / 100) * 270;
+        dial.style.transform = `rotate(${deg}deg)`;
+      }
+      updateAudioEngineParameters();
+    }
+
+    function stopKnobDrag() {
+      if (activeKnobDrag) {
+        showToast(`${activeKnobDrag.pedal.name} — ${activeKnobDrag.knob.label}: ${activeKnobDrag.knob.value}%`);
+        activeKnobDrag = null;
+      }
+      window.removeEventListener('mousemove', onKnobDragMove);
+      window.removeEventListener('mouseup', stopKnobDrag);
+      window.removeEventListener('touchmove', onKnobDragMove);
+      window.removeEventListener('touchend', stopKnobDrag);
+    }
+
+    function handleKnobWheel(e, pedalId, knobKey) {
+      e.preventDefault();
+      const pedal = STOMPBOX_PEDALS.find(p => p.id === pedalId);
+      const knob = pedal.knobs.find(k => k.key === knobKey);
+      const step = e.deltaY < 0 ? 4 : -4;
+      knob.value = Math.max(0, Math.min(100, knob.value + step));
+      const dial = document.getElementById(`knob-dial-${pedal.id}-${knob.key}`);
+      if (dial) {
+        const deg = -135 + (knob.value / 100) * 270;
+        dial.style.transform = `rotate(${deg}deg)`;
+      }
+      updateAudioEngineParameters();
+    }
+
+    /* ==================== TOP HEADER MODALS & BUTTONS ==================== */
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    function openModal(title, html) {
+      if (!modalBackdrop) return;
+      modalTitle.textContent = title;
+      modalContent.innerHTML = html;
+      modalBackdrop.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      if (modalBackdrop) modalBackdrop.classList.add('hidden');
+      stopTunerMic();
+    }
+
+    const modalCloseBtn = document.getElementById('modal-close');
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+    if (modalBackdrop) {
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) closeModal();
+      });
+    }
+
+    document.getElementById('btn-live-mode').addEventListener('click', (e) => {
+      appState.liveMode = !appState.liveMode;
+      const btn = e.currentTarget;
+      if (appState.liveMode) {
+        btn.className = 'h-10 sm:h-11 px-3 sm:px-4 rounded-xl bg-[#f59e0b] hover:bg-[#fbbf24] text-[#121417] font-bold text-xs sm:text-sm tracking-wide transition shadow-md active:scale-95';
+        showToast('LIVE Performance Mode Active');
+      } else {
+        btn.className = 'h-10 sm:h-11 px-3 sm:px-4 rounded-xl bg-[#1c2026] hover:bg-[#252a33] border border-[#2c313c] text-slate-200 font-bold text-xs sm:text-sm tracking-wide transition active:scale-95';
+        showToast('EDIT Grid Mode Active');
+      }
+    });
+
+    document.getElementById('btn-scenes-toggle').addEventListener('click', (e) => {
+      appState.scenesVisible = !appState.scenesVisible;
+      const btn = e.currentTarget;
+      btn.classList.toggle('border-amber-400', !appState.scenesVisible);
+      renderScenesRow();
+    });
+
+    document.getElementById('btn-logo').addEventListener('click', () => {
+      openModal('QuadTone DSP Engine v2.4', `
+        <div class="space-y-3 text-xs text-slate-300">
+          <div class="p-3 rounded-xl bg-[#13161b] border border-[#282e3a] flex items-center justify-between">
+            <span class="text-slate-400">DSP Architecture</span>
+            <span class="font-mono-tech text-emerald-400 font-semibold">Dual-Path 32-Bit Float WebAudio</span>
+          </div>
+          <div class="p-3 rounded-xl bg-[#13161b] border border-[#282e3a] flex items-center justify-between">
+            <span class="text-slate-400">Keyboard Shortcuts</span>
+            <span class="font-mono-tech text-amber-400">Keys 1–8: Scenes A–H | Space: Riff</span>
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            Click <strong class="text-emerald-400">PLAY RIFF</strong> in the top bar to audition a live synthesized electric guitar riff routed in real time through active pedals, dual Clean/Crunch amps, speaker cabs, ping-pong delay, and cloud reverb.
+          </p>
+        </div>
+      `);
+    });
+
+    document.getElementById('io-meter-pill').addEventListener('click', () => {
+      openModal('I/O Levels & Gain Staging', `
+        <div class="space-y-4">
+          <div class="bg-[#13161b] p-3.5 rounded-xl border border-[#282e3a]">
+            <div class="flex justify-between text-xs mb-2">
+              <span class="font-semibold text-slate-300">Guitar Input Gain</span>
+              <span id="io-in-val" class="font-mono-tech text-emerald-400">${Math.round(appState.inputGain * 100)}%</span>
+            </div>
+            <input type="range" min="0.2" max="2.0" step="0.05" value="${appState.inputGain}" class="dsp-slider w-full"
+              oninput="appState.inputGain = parseFloat(this.value); document.getElementById('io-in-val').textContent = Math.round(appState.inputGain*100)+'%'; updateAudioEngineParameters();">
+          </div>
+          <div class="bg-[#13161b] p-3.5 rounded-xl border border-[#282e3a]">
+            <div class="flex justify-between text-xs mb-2">
+              <span class="font-semibold text-slate-300">Master Stereo Output</span>
+              <span id="io-out-val" class="font-mono-tech text-emerald-400">${Math.round(appState.outputGain * 100)}%</span>
+            </div>
+            <input type="range" min="0.0" max="1.2" step="0.05" value="${appState.outputGain}" class="dsp-slider w-full"
+              oninput="appState.outputGain = parseFloat(this.value); document.getElementById('io-out-val').textContent = Math.round(appState.outputGain*100)+'%'; updateAudioEngineParameters();">
+          </div>
+        </div>
+      `);
+    });
+
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      openModal('Audio & Hardware Settings', `
+        <div class="space-y-3.5 text-xs">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-[#13161b] border border-[#282e3a]">
+            <div>
+              <div class="font-bold text-slate-200">Built-in Guitar Riff Generator</div>
+              <div class="text-slate-400 text-[11px]">Audition pedals & amps without external guitar</div>
+            </div>
+            <button onclick="toggleGuitarSynth(); closeModal();" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-bold">
+              ${audioEngine.isPlaying ? 'Stop Riff' : 'Start Riff'}
+            </button>
+          </div>
+          <div class="flex items-center justify-between p-3 rounded-xl bg-[#13161b] border border-[#282e3a]">
+            <div>
+              <div class="font-bold text-slate-200">Live Audio Interface / Mic Input</div>
+              <div class="text-slate-400 text-[11px]">Route external guitar interface into DSP chain</div>
+            </div>
+            <button onclick="enableLiveMicInput();" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 font-bold">
+              Connect Input
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5 pt-1">
+            <div class="p-3 rounded-xl bg-[#13161b] border border-[#282e3a]">
+              <div class="text-slate-400">Sample Rate</div>
+              <div class="font-mono-tech text-slate-100 font-bold mt-0.5">48.0 kHz</div>
+            </div>
+            <div class="p-3 rounded-xl bg-[#13161b] border border-[#282e3a]">
+              <div class="text-slate-400">MIDI Scene Channel</div>
+              <div class="font-mono-tech text-slate-100 font-bold mt-0.5">CH 1 (CC 60–67)</div>
+            </div>
+          </div>
+        </div>
+      `);
+    });
+
+    /* ==================== TUNER & METRONOME ==================== */
+    let tunerStream = null;
+    document.getElementById('btn-tuner').addEventListener('click', () => {
+      openModal('Chromatic Guitar Tuner (A4 = 440Hz)', `
+        <div class="flex flex-col items-center">
+          <div class="w-full h-28 rounded-xl bg-[#111318] border border-[#272c37] relative flex flex-col items-center justify-center mb-4 overflow-hidden">
+            <div class="flex items-center gap-6 text-[10px] font-mono-tech text-slate-500 mb-1">
+              <span>-50¢</span><span>-25¢</span><span class="text-emerald-400 font-bold">IN TUNE</span><span>+25¢</span><span>+50¢</span>
+            </div>
+            <div id="tuner-note" class="text-4xl font-extrabold text-emerald-400 tracking-tight">E2</div>
+            <div id="tuner-freq" class="text-xs font-mono-tech text-slate-400 mt-0.5">82.41 Hz (0 cents)</div>
+            <div class="w-4/5 h-1.5 bg-[#232832] rounded-full mt-3 relative">
+              <div class="absolute left-1/2 -translate-x-1/2 -top-1 w-0.5 h-3.5 bg-emerald-400"></div>
+              <div id="tuner-needle" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-amber-400 shadow-md transition-all duration-150" style="left: 50%;"></div>
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-400 mb-2">Tap a string to play reference pitch & test needle:</div>
+          <div class="grid grid-cols-6 gap-2 w-full">
+            ${[
+              { note: 'E2', freq: 82.41 },
+              { note: 'A2', freq: 110.00 },
+              { note: 'D3', freq: 146.83 },
+              { note: 'G3', freq: 196.00 },
+              { note: 'B3', freq: 246.94 },
+              { note: 'E4', freq: 329.63 }
+            ].map(s => `
+              <button onclick="pluckReferenceString('${s.note}', ${s.freq})"
+                class="py-2.5 rounded-xl bg-[#1f242d] hover:bg-amber-500 hover:text-[#121417] border border-[#303746] font-bold text-xs transition">
+                ${s.note}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `);
+    });
+
+    function pluckReferenceString(note, freq) {
+      ensureAudioContext();
+      const ctx = audioEngine.ctx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 1.4);
+
+      const cents = Math.floor((Math.random() - 0.5) * 6);
+      const noteEl = document.getElementById('tuner-note');
+      const freqEl = document.getElementById('tuner-freq');
+      const needleEl = document.getElementById('tuner-needle');
+      if (noteEl) noteEl.textContent = note;
+      if (freqEl) freqEl.textContent = `${freq.toFixed(2)} Hz (${cents >= 0 ? '+' : ''}${cents} cents)`;
+      if (needleEl) needleEl.style.left = `${50 + cents}%`;
+    }
+
+    function stopTunerMic() {
+      if (tunerStream) {
+        tunerStream.getTracks().forEach(t => t.stop());
+        tunerStream = null;
+      }
+    }
+
+    const metroState = { running: false, bpm: 120, beat: 0, timer: null, lastTap: 0 };
+
+    document.getElementById('btn-metronome').addEventListener('click', () => {
+      openModal('Studio Metronome & Tap Tempo', `
+        <div class="flex flex-col items-center space-y-4">
+          <div class="flex items-center gap-3">
+            ${[1, 2, 3, 4].map(b => `
+              <div id="metro-beat-${b}" class="w-4 h-4 rounded-full bg-[#262b35] transition-all"></div>
+            `).join('')}
+          </div>
+          <div class="text-center">
+            <div id="metro-bpm-display" class="text-4xl font-extrabold font-mono-tech text-amber-400">${metroState.bpm}</div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-400">BPM (4/4 Time)</div>
+          </div>
+          <input type="range" min="50" max="220" value="${metroState.bpm}" class="dsp-slider w-full"
+            oninput="setMetronomeBpm(parseInt(this.value, 10))">
+          <div class="grid grid-cols-2 gap-3 w-full pt-1">
+            <button id="metro-toggle-btn" onclick="toggleMetronome()"
+              class="py-2.5 rounded-xl ${metroState.running ? 'bg-red-500 text-white' : 'bg-emerald-500 text-[#121417]'} font-bold text-xs uppercase tracking-wider transition">
+              ${metroState.running ? 'Stop Click' : 'Start Click'}
+            </button>
+            <button onclick="tapTempo()"
+              class="py-2.5 rounded-xl bg-[#222731] hover:bg-[#2c3240] border border-[#343b4b] text-slate-100 font-bold text-xs uppercase tracking-wider transition active:scale-95">
+              Tap Tempo
+            </button>
+          </div>
+        </div>
+      `);
+    });
+
+    function setMetronomeBpm(bpm) {
+      metroState.bpm = Math.max(50, Math.min(220, bpm));
+      const disp = document.getElementById('metro-bpm-display');
+      if (disp) disp.textContent = metroState.bpm;
+      if (metroState.running) {
+        clearInterval(metroState.timer);
+        startMetronomeLoop();
+      }
+    }
+
+    function tapTempo() {
+      const now = performance.now();
+      if (metroState.lastTap && (now - metroState.lastTap) < 2000) {
+        const bpm = Math.round(60000 / (now - metroState.lastTap));
+        setMetronomeBpm(bpm);
+      }
+      metroState.lastTap = now;
+    }
+
+    function toggleMetronome() {
+      metroState.running = !metroState.running;
+      const dot = document.getElementById('metro-dot');
+      const btn = document.getElementById('metro-toggle-btn');
+      if (metroState.running) {
+        ensureAudioContext();
+        if (dot) dot.classList.remove('hidden');
+        if (btn) {
+          btn.textContent = 'Stop Click';
+          btn.className = 'py-2.5 rounded-xl bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition';
+        }
+        startMetronomeLoop();
+      } else {
+        if (dot) dot.classList.add('hidden');
+        clearInterval(metroState.timer);
+        if (btn) {
+          btn.textContent = 'Start Click';
+          btn.className = 'py-2.5 rounded-xl bg-emerald-500 text-[#121417] font-bold text-xs uppercase tracking-wider transition';
+        }
+      }
+    }
+
+    function startMetronomeLoop() {
+      const intervalMs = 60000 / metroState.bpm;
+      const tick = () => {
+        metroState.beat = (metroState.beat % 4) + 1;
+        const ctx = audioEngine.ctx;
+        if (ctx) {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.frequency.value = metroState.beat === 1 ? 1200 : 800;
+          g.gain.setValueAtTime(0.18, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+          osc.connect(g).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.06);
+        }
+
+        for (let i = 1; i <= 4; i++) {
+          const el = document.getElementById(`metro-beat-${i}`);
+          if (el) el.style.backgroundColor = i === metroState.beat ? '#f59e0b' : '#262b35';
+        }
+      };
+      tick();
+      metroState.timer = setInterval(tick, intervalMs);
+    }
+
+    /* ==================== REAL-TIME WEB AUDIO DSP ENGINE ==================== */
+    const audioEngine = {
+      ctx: null,
+      isPlaying: false,
+      riffInterval: null,
+      nodes: {}
+    };
+
+    function makeDistortionCurve(amount) {
+      const n = 44100;
+      const curve = new Float32Array(n);
+      const k = amount;
+      for (let i = 0; i < n; ++i) {
+        const x = (i * 2) / n - 1;
+        curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
+      }
+      return curve;
+    }
+
+    function createImpulseResponse(ctx, duration = 4.0, decay = 2.5) {
+      const rate = ctx.sampleRate;
+      const length = Math.floor(rate * duration);
+      const impulse = ctx.createBuffer(2, length, rate);
+      for (let c = 0; c < 2; c++) {
+        const channel = impulse.getChannelData(c);
+        for (let i = 0; i < length; i++) {
+          channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+        }
+      }
+      return impulse;
+    }
+
+    function ensureAudioContext() {
+      if (audioEngine.ctx) {
+        if (audioEngine.ctx.state === 'suspended') audioEngine.ctx.resume();
+        return;
+      }
+
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioEngine.ctx = ctx;
+
+      const inputGain = ctx.createGain();
+      const comp = ctx.createDynamicsCompressor();
+      const odShaper = ctx.createWaveShaper();
+      odShaper.curve = makeDistortionCurve(45);
+      odShaper.oversample = '4x';
+      const odGain = ctx.createGain();
+
+      const ampAGain = ctx.createGain();
+      const cabAFilter = ctx.createBiquadFilter();
+      cabAFilter.type = 'lowpass';
+      cabAFilter.frequency.value = 5200;
+      const panA = ctx.createStereoPanner();
+      panA.pan.value = -0.35;
+
+      const ampBShaper = ctx.createWaveShaper();
+      ampBShaper.curve = makeDistortionCurve(70);
+      const ampBGain = ctx.createGain();
+      const cabBFilter = ctx.createBiquadFilter();
+      cabBFilter.type = 'lowpass';
+      cabBFilter.frequency.value = 4600;
+      const panB = ctx.createStereoPanner();
+      panB.pan.value = 0.35;
+
+      const mixBus = ctx.createGain();
+
+      const delayNode = ctx.createDelay(1.5);
+      delayNode.delayTime.value = 0.375;
+      const delayFeedback = ctx.createGain();
+      delayFeedback.gain.value = 0.38;
+      const delayWet = ctx.createGain();
+      delayWet.gain.value = 0.32;
+      delayNode.connect(delayFeedback).connect(delayNode);
+
+      const convolver = ctx.createConvolver();
+      convolver.buffer = createImpulseResponse(ctx, 4.5, 2.2);
+      const reverbWet = ctx.createGain();
+      reverbWet.gain.value = 0.35;
+
+      const stompPhaserFilter = ctx.createBiquadFilter();
+      stompPhaserFilter.type = 'allpass';
+      stompPhaserFilter.frequency.value = 900;
+      stompPhaserFilter.Q.value = 3.5;
+
+      const stompChorusDelay = ctx.createDelay(0.1);
+      stompChorusDelay.delayTime.value = 0.018;
+      const stompChorusWet = ctx.createGain();
+      stompChorusWet.gain.value = 0.0;
+
+      const stompTremoloGain = ctx.createGain();
+      stompTremoloGain.gain.value = 1.0;
+
+      const stompLfo = ctx.createOscillator();
+      stompLfo.type = 'sine';
+      stompLfo.frequency.value = 2.2;
+      const stompLfoDepth = ctx.createGain();
+      stompLfoDepth.gain.value = 0.004;
+      stompLfo.connect(stompLfoDepth);
+      stompLfoDepth.connect(stompChorusDelay.delayTime);
+      stompLfo.start();
+
+      const tremoloLfo = ctx.createOscillator();
+      tremoloLfo.type = 'sine';
+      tremoloLfo.frequency.value = 5.0;
+      const tremoloLfoDepth = ctx.createGain();
+      tremoloLfoDepth.gain.value = 0.0;
+      tremoloLfo.connect(tremoloLfoDepth);
+      tremoloLfoDepth.connect(stompTremoloGain.gain);
+      tremoloLfo.start();
+
+      const stompDelayNode = ctx.createDelay(1.5);
+      stompDelayNode.delayTime.value = 0.32;
+      const stompDelayFb = ctx.createGain();
+      stompDelayFb.gain.value = 0.35;
+      const stompDelayWet = ctx.createGain();
+      stompDelayWet.gain.value = 0.0;
+      stompDelayNode.connect(stompDelayFb).connect(stompDelayNode);
+
+      const masterOut = ctx.createGain();
+      masterOut.gain.value = appState.outputGain;
+
+      inputGain.connect(comp).connect(odShaper).connect(odGain);
+      odGain.connect(ampAGain).connect(cabAFilter).connect(panA).connect(mixBus);
+      odGain.connect(ampBShaper).connect(ampBGain).connect(cabBFilter).connect(panB).connect(mixBus);
+
+      mixBus.connect(stompPhaserFilter).connect(stompTremoloGain);
+      stompPhaserFilter.connect(stompChorusDelay).connect(stompChorusWet).connect(stompTremoloGain);
+
+      stompTremoloGain.connect(masterOut);
+      stompTremoloGain.connect(stompDelayNode).connect(stompDelayWet).connect(masterOut);
+      stompTremoloGain.connect(delayNode).connect(delayWet).connect(masterOut);
+      stompTremoloGain.connect(convolver).connect(reverbWet).connect(masterOut);
+
+      masterOut.connect(ctx.destination);
+
+      audioEngine.nodes = {
+        inputGain, comp, odShaper, odGain,
+        ampAGain, cabAFilter, panA,
+        ampBShaper, ampBGain, cabBFilter, panB,
+        mixBus, delayNode, delayFeedback, delayWet,
+        convolver, reverbWet,
+        stompPhaserFilter, stompChorusDelay, stompChorusWet,
+        stompTremoloGain, stompLfo, stompLfoDepth,
+        tremoloLfo, tremoloLfoDepth,
+        stompDelayNode, stompDelayFb, stompDelayWet,
+        masterOut
+      };
+
+      updateAudioEngineParameters();
+    }
+
+    function updateAudioEngineParameters() {
+      if (!audioEngine.ctx) return;
+      const n = audioEngine.nodes;
+      const chain = getCurrentChain();
+
+      n.inputGain.gain.value = appState.inputGain;
+      n.masterOut.gain.value = appState.outputGain;
+
+      const getStomp = id => STOMPBOX_PEDALS.find(p => p.id === id);
+      const getKnob = (pedal, key) => pedal ? pedal.knobs.find(k => k.key === key).value : 0;
+
+      const sVintOd = getStomp('stomp_vintage_od');
+      const sCrunch = getStomp('stomp_crunch_dist');
+      const sDream = getStomp('stomp_us_dream');
+      const sUlt = getStomp('stomp_ultimate_drive');
+
+      const stompDriveBoost =
+        (sVintOd && sVintOd.enabled ? getKnob(sVintOd, 'Drive') * 0.9 : 0) +
+        (sCrunch && sCrunch.enabled ? getKnob(sCrunch, 'Gain') * 1.3 : 0) +
+        (sDream && sDream.enabled ? getKnob(sDream, 'Dist') * 1.5 : 0) +
+        (sUlt && sUlt.enabled ? getKnob(sUlt, 'Gain') * (sUlt.switchState === 'High' ? 1.8 : 1.1) : 0);
+
+      const tod = chain.pre.find(b => b.id === 'tod1');
+      const kod = chain.pre.find(b => b.id === 'kod1');
+      const driveAmount = (tod && tod.enabled ? tod.params.Gain * 14 : 0) + (kod && kod.enabled ? kod.params.DriveA * 18 : 0) + stompDriveBoost;
+      n.odShaper.curve = makeDistortionCurve(Math.max(4, driveAmount));
+
+      const ampA = chain.pathA.find(b => b.id === 'ampA');
+      const ampB = chain.pathB.find(b => b.id === 'ampB');
+      n.ampAGain.gain.value = ampA && ampA.enabled ? 0.65 : 0.0;
+      n.ampBGain.gain.value = ampB && ampB.enabled ? 0.65 : 0.0;
+      if (ampB) n.ampBShaper.curve = makeDistortionCurve(ampB.params.Gain * 16);
+
+      const sAChorus = getStomp('stomp_analog_chorus');
+      const sCChorus = getStomp('stomp_classic_chorus');
+      const chorusActive = (sAChorus && sAChorus.enabled) || (sCChorus && sCChorus.enabled);
+      if (chorusActive) {
+        const activeCh = (sCChorus && sCChorus.enabled) ? sCChorus : sAChorus;
+        n.stompLfo.frequency.value = 0.5 + (getKnob(activeCh, 'Rate') / 100) * 5.0;
+        n.stompLfoDepth.gain.value = 0.002 + (getKnob(activeCh, 'Depth') / 100) * 0.008;
+        n.stompChorusWet.gain.value = 0.55;
+      } else {
+        n.stompChorusWet.gain.value = 0.0;
+      }
+
+      const sTrem = getStomp('stomp_tremolo');
+      if (sTrem && sTrem.enabled) {
+        n.tremoloLfo.frequency.value = 1.5 + (getKnob(sTrem, 'Rate') / 100) * 10.0;
+        n.tremoloLfoDepth.gain.value = (getKnob(sTrem, 'Intensity') / 100) * 0.48;
+      } else {
+        n.tremoloLfoDepth.gain.value = 0.0;
+      }
+
+      const sPhase = getStomp('stomp_vintage_phase');
+      if (sPhase && sPhase.enabled) {
+        n.stompPhaserFilter.Q.value = 5.5;
+        n.stompPhaserFilter.frequency.value = 400 + (getKnob(sPhase, 'Speed') / 100) * 1800;
+      } else {
+        n.stompPhaserFilter.Q.value = 0.5;
+        n.stompPhaserFilter.frequency.value = 1200;
+      }
+
+      const sADly = getStomp('stomp_analog_delay');
+      const sDDly = getStomp('stomp_digital_delay');
+      if (sDDly && sDDly.enabled) {
+        n.stompDelayNode.delayTime.value = 0.08 + (getKnob(sDDly, 'Time') / 100) * 0.65;
+        n.stompDelayFb.gain.value = (getKnob(sDDly, 'Repeat') / 100) * 0.75;
+        n.stompDelayWet.gain.value = (getKnob(sDDly, 'Level') / 100) * 0.65;
+      } else if (sADly && sADly.enabled) {
+        n.stompDelayNode.delayTime.value = 0.06 + (getKnob(sADly, 'Time') / 100) * 0.50;
+        n.stompDelayFb.gain.value = (getKnob(sADly, 'Repeat') / 100) * 0.70;
+        n.stompDelayWet.gain.value = (getKnob(sADly, 'Mix') / 100) * 0.60;
+      } else {
+        n.stompDelayWet.gain.value = 0.0;
+      }
+
+      const dly = chain.post.find(b => b.id === 'dly1');
+      n.delayNode.delayTime.value = dly ? dly.params.Time / 1000 : 0.375;
+      n.delayFeedback.gain.value = dly ? dly.params.Feedback / 100 : 0.3;
+      n.delayWet.gain.value = dly && dly.enabled ? (dly.params.Mix / 100) * 0.85 : 0.0;
+
+      const rev1 = chain.post.find(b => b.id === 'rev1');
+      const rev2 = chain.post.find(b => b.id === 'rev2');
+      const revMix = (rev1 && rev1.enabled ? rev1.params.Mix / 100 : 0) + (rev2 && rev2.enabled ? rev2.params.Mix / 100 : 0);
+      n.reverbWet.gain.value = Math.min(0.85, revMix * 0.9);
+    }
+
+    function triggerGuitarNote(freq, duration = 0.65) {
+      if (!audioEngine.ctx) return;
+      const ctx = audioEngine.ctx;
+      const now = ctx.currentTime;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(freq, now);
+      osc2.frequency.setValueAtTime(freq * 1.003, now);
+
+      const pluckFilter = ctx.createBiquadFilter();
+      pluckFilter.type = 'lowpass';
+      pluckFilter.frequency.setValueAtTime(3400, now);
+      pluckFilter.frequency.exponentialRampToValueAtTime(650, now + duration);
+
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.001, now);
+      env.gain.linearRampToValueAtTime(0.28, now + 0.015);
+      env.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc1.connect(pluckFilter);
+      osc2.connect(pluckFilter);
+      pluckFilter.connect(env).connect(audioEngine.nodes.inputGain);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + duration);
+      osc2.stop(now + duration);
+    }
+
+    function toggleGuitarSynth() {
+      const btn = document.getElementById('btn-audio-play');
+      const label = document.getElementById('audio-play-label');
+
+      if (audioEngine.isPlaying) {
+        audioEngine.isPlaying = false;
+        clearInterval(audioEngine.riffInterval);
+        if (btn) btn.classList.remove('border-emerald-400', 'audio-active-pulse');
+        if (label) label.textContent = 'PLAY RIFF';
+        showToast('Guitar Riff Stopped');
+        return;
+      }
+
+      ensureAudioContext();
+      audioEngine.isPlaying = true;
+      if (btn) btn.classList.add('border-emerald-400', 'audio-active-pulse');
+      if (label) label.textContent = 'STOP RIFF';
+      showToast('Playing Guitar Riff through DSP Chain');
+
+      const riffNotes = [
+        { f: 164.81, d: 0.5 },
+        { f: 246.94, d: 0.5 },
+        { f: 329.63, d: 0.7 },
+        { f: 392.00, d: 0.5 },
+        { f: 369.99, d: 0.6 },
+        { f: 293.66, d: 0.6 },
+        { f: 246.94, d: 0.8 },
+        { f: 196.00, d: 0.6 }
+      ];
+      let step = 0;
+      triggerGuitarNote(riffNotes[0].f, riffNotes[0].d);
+      audioEngine.riffInterval = setInterval(() => {
+        step = (step + 1) % riffNotes.length;
+        triggerGuitarNote(riffNotes[step].f, riffNotes[step].d);
+      }, 420);
+    }
+
+    async function enableLiveMicInput() {
+      try {
+        ensureAudioContext();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        const src = audioEngine.ctx.createMediaStreamSource(stream);
+        src.connect(audioEngine.nodes.inputGain);
+        closeModal();
+        showToast('Live Guitar / Mic Input Connected!');
+      } catch (err) {
+        showToast('Microphone permission denied or unavailable');
+      }
+    }
+
+    document.getElementById('btn-audio-play').addEventListener('click', toggleGuitarSynth);
+
+    /* ==================== ANIMATED I/O LEVEL METERS ==================== */
+    function animateMeters() {
+      const inBar = document.getElementById('meter-in');
+      const outL = document.getElementById('meter-out-l');
+      const outR = document.getElementById('meter-out-r');
+
+      if (inBar && outL && outR) {
+        if (audioEngine.isPlaying) {
+          const pulse = Math.abs(Math.sin(performance.now() / 160)) * 35 + Math.random() * 20;
+          const inPct = Math.min(92, Math.max(18, (25 + pulse) * appState.inputGain));
+          const outPctL = Math.min(96, Math.max(22, (42 + pulse * 1.15) * appState.outputGain));
+          const outPctR = Math.min(96, Math.max(20, (40 + pulse * 1.12 + (Math.random() * 6 - 3)) * appState.outputGain));
+          inBar.style.width = `${inPct}%`;
+          outL.style.width = `${outPctL}%`;
+          outR.style.width = `${outPctR}%`;
+        } else {
+          inBar.style.width = '46%';
+          outL.style.width = '72%';
+          outR.style.width = '74%';
+        }
+      }
+      requestAnimationFrame(animateMeters);
+    }
+
+    /* ==================== HELPERS & KEYBOARD SHORTCUTS ==================== */
+    function scrollChain(direction) {
+      const vp = document.getElementById('signal-chain-viewport');
+      if (vp) {
+        vp.scrollTo({
+          left: direction === 'left' ? 0 : vp.scrollWidth,
+          behavior: 'smooth'
+        });
+      }
+    }
+
+    let toastTimeout = null;
+    function showToast(text) {
+      const toast = document.getElementById('toast-msg');
+      if (!toast) return;
+      toast.textContent = text;
+      toast.style.opacity = '1';
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+      }, 2000);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key >= '1' && e.key <= '8') {
+        selectScene(parseInt(e.key, 10) - 1);
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        toggleGuitarSynth();
+      } else if (e.key.toLowerCase() === 't') {
+        const btnT = document.getElementById('btn-tuner');
+        if (btnT) btnT.click();
+      } else if (e.key.toLowerCase() === 'm') {
+        const btnM = document.getElementById('btn-metronome');
+        if (btnM) btnM.click();
+      } else if (e.key === 'Escape') {
+        closeModal();
+        closeInspector();
+      }
+    });
+
+    /* ==================== INITIALIZE UI ON LOAD ==================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      renderSignalChain();
+      renderPresetsBar();
+      renderScenesRow();
+      updateStompboxBadge();
+      requestAnimationFrame(animateMeters);
+    });
+  </script>
+</body>
+</html>
